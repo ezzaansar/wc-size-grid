@@ -49,7 +49,7 @@ function wsg_save_order_item_meta( $item, $cart_item_key, $values, $order ) {
 			}
 		}
 
-		$item->add_meta_data( __( 'Sizes ordered', 'wsg' ), implode( ', ', $breakdown ) );
+		$item->add_meta_data( 'Sizes ordered', implode( ', ', $breakdown ) );
 
 		return;
 	}
@@ -65,15 +65,32 @@ function wsg_save_order_item_meta( $item, $cart_item_key, $values, $order ) {
 		return;
 	}
 
-	// Product mode items with bulk discount.
-	if ( empty( $values['_wsg_is_bundle'] ) && isset( $values['_wsg_discount'] ) && floatval( $values['_wsg_discount'] ) > 0 ) {
+	// Product mode items with discount (recalculated dynamically).
+	if ( empty( $values['_wsg_is_bundle'] ) && ! empty( $values['_wsg_group_id'] ) ) {
 
-		$discount = floatval( $values['_wsg_discount'] );
+		$pid       = $values['product_id'];
+		$total_qty = 0;
 
-		$item->add_meta_data( '_wsg_discount', $discount );
-		$item->add_meta_data(
-			__( 'Bulk discount', 'wsg' ),
-			'-' . wc_price( $discount ) . ' ' . __( 'per item', 'wsg' )
-		);
+		foreach ( WC()->cart->get_cart() as $other ) {
+			if ( empty( $other['_wsg_group_id'] ) || ! empty( $other['_wsg_is_bundle'] ) ) {
+				continue;
+			}
+			if ( (int) $other['product_id'] === (int) $pid ) {
+				$total_qty += $other['quantity'];
+			}
+		}
+
+		$tiers    = get_post_meta( $pid, '_wsg_discount_tiers', true );
+		$tiers    = is_array( $tiers ) ? $tiers : array();
+		$discount = wsg_get_discount_for_qty( $tiers, $total_qty );
+		$discount = floatval( apply_filters( 'wsg_discount_amount', $discount, $pid, $total_qty ) );
+
+		if ( $discount > 0 ) {
+			$item->add_meta_data( '_wsg_discount', $discount );
+			$item->add_meta_data(
+				'Bulk discount',
+				'-' . wc_price( $discount ) . ' ' . __( 'per item', 'wsg' )
+			);
+		}
 	}
 }

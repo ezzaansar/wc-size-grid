@@ -42,7 +42,7 @@ function wsg_product_add_to_cart() {
 	$items_json = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : '[]';
 	$items      = json_decode( $items_json, true );
 
-	if ( ! $product_id || empty( $items ) ) {
+	if ( ! $product_id || ! is_array( $items ) || empty( $items ) ) {
 		wp_send_json_error( array( 'message' => __( 'No items selected.', 'wsg' ) ) );
 	}
 
@@ -82,10 +82,20 @@ function wsg_product_add_to_cart() {
 	$size_attr  = $attrs['size'];
 
 	foreach ( $items as $item ) {
-		$qty          = absint( $item['qty'] );
-		$variation_id = absint( $item['variation_id'] );
+		if ( ! is_array( $item ) ) {
+			continue;
+		}
+
+		$qty          = absint( $item['qty'] ?? 0 );
+		$variation_id = absint( $item['variation_id'] ?? 0 );
 
 		if ( $qty <= 0 || ! $variation_id ) {
+			continue;
+		}
+
+		$variation = wc_get_product( $variation_id );
+
+		if ( ! $variation ) {
 			continue;
 		}
 
@@ -101,8 +111,9 @@ function wsg_product_add_to_cart() {
 		}
 
 		$cart_item_data = array(
-			'_wsg_group_id' => $group_id,
-			'_wsg_discount' => $discount,
+			'_wsg_group_id'   => $group_id,
+			'_wsg_discount'   => $discount,
+			'_wsg_base_price' => floatval( $variation->get_price() ),
 		);
 
 		/**
@@ -163,24 +174,57 @@ function wsg_apply_bulk_discount( $cart ) {
 		return;
 	}
 
-	if ( did_action( 'woocommerce_before_calculate_totals' ) >= 2 ) {
+	// First pass: sum quantities per product for product-mode WSG items.
+	$product_qtys = array();
+
+	foreach ( $cart->get_cart() as $cart_item ) {
+		if ( empty( $cart_item['_wsg_group_id'] ) || ! empty( $cart_item['_wsg_is_bundle'] ) ) {
+			continue;
+		}
+
+		$pid = $cart_item['product_id'];
+
+		if ( ! isset( $product_qtys[ $pid ] ) ) {
+			$product_qtys[ $pid ] = 0;
+		}
+
+		$product_qtys[ $pid ] += $cart_item['quantity'];
+	}
+
+	if ( empty( $product_qtys ) ) {
 		return;
 	}
 
+	// Look up the current discount tier for each product.
+	$product_discounts = array();
+
+	foreach ( $product_qtys as $pid => $total_qty ) {
+		$tiers    = get_post_meta( $pid, '_wsg_discount_tiers', true );
+		$tiers    = is_array( $tiers ) ? $tiers : array();
+		$discount = wsg_get_discount_for_qty( $tiers, $total_qty );
+
+		$product_discounts[ $pid ] = floatval( apply_filters( 'wsg_discount_amount', $discount, $pid, $total_qty ) );
+	}
+
+	// Second pass: apply discount using the stored base price for idempotency.
 	foreach ( $cart->get_cart() as $cart_item ) {
-		if ( empty( $cart_item['_wsg_discount'] ) ) {
+		if ( empty( $cart_item['_wsg_group_id'] ) || ! empty( $cart_item['_wsg_is_bundle'] ) ) {
 			continue;
 		}
 
-		// Skip bundle items — they have their own pricing.
-		if ( ! empty( $cart_item['_wsg_is_bundle'] ) ) {
+		$pid      = $cart_item['product_id'];
+		$discount = isset( $product_discounts[ $pid ] ) ? $product_discounts[ $pid ] : 0;
+
+		if ( $discount <= 0 ) {
 			continue;
 		}
 
-		$discount = floatval( $cart_item['_wsg_discount'] );
-		$price    = floatval( $cart_item['data']->get_price() );
+		// Use stored base price for idempotency; fall back to current price for legacy items.
+		$base_price = isset( $cart_item['_wsg_base_price'] )
+			? floatval( $cart_item['_wsg_base_price'] )
+			: floatval( $cart_item['data']->get_price() );
 
-		$cart_item['data']->set_price( max( 0, $price - $discount ) );
+		$cart_item['data']->set_price( max( 0, $base_price - $discount ) );
 	}
 }
 
@@ -198,16 +242,27 @@ add_filter( 'woocommerce_get_item_data', 'wsg_product_cart_item_data', 10, 2 );
  * @return array Modified item data rows.
  */
 function wsg_product_cart_item_data( $item_data, $cart_item ) {
-	if ( empty( $cart_item['_wsg_discount'] ) ) {
+	if ( empty( $cart_item['_wsg_group_id'] ) || ! empty( $cart_item['_wsg_is_bundle'] ) ) {
 		return $item_data;
 	}
 
-	// Don't show for bundle items.
-	if ( ! empty( $cart_item['_wsg_is_bundle'] ) ) {
-		return $item_data;
+	// Dynamically calculate discount based on all WSG items for this product in cart.
+	$pid       = $cart_item['product_id'];
+	$total_qty = 0;
+
+	foreach ( WC()->cart->get_cart() as $other ) {
+		if ( empty( $other['_wsg_group_id'] ) || ! empty( $other['_wsg_is_bundle'] ) ) {
+			continue;
+		}
+		if ( (int) $other['product_id'] === (int) $pid ) {
+			$total_qty += $other['quantity'];
+		}
 	}
 
-	$discount = floatval( $cart_item['_wsg_discount'] );
+	$tiers    = get_post_meta( $pid, '_wsg_discount_tiers', true );
+	$tiers    = is_array( $tiers ) ? $tiers : array();
+	$discount = wsg_get_discount_for_qty( $tiers, $total_qty );
+	$discount = floatval( apply_filters( 'wsg_discount_amount', $discount, $pid, $total_qty ) );
 
 	if ( $discount > 0 ) {
 		$item_data[] = array(

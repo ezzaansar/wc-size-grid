@@ -23,7 +23,7 @@ function wsg_bundle_add_to_cart_handler() {
 	$items_json = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : '[]';
 	$items      = json_decode( $items_json, true );
 
-	if ( ! $product_id || empty( $items ) ) {
+	if ( ! $product_id || ! is_array( $items ) || empty( $items ) ) {
 		wp_send_json_error( array( 'message' => __( 'No items selected.', 'wsg' ) ) );
 	}
 
@@ -66,8 +66,12 @@ function wsg_bundle_add_to_cart_handler() {
 	$cart_item_keys = array();
 
 	foreach ( $items as $item ) {
-		$qty          = absint( $item['qty'] );
-		$variation_id = absint( $item['variation_id'] );
+		if ( ! is_array( $item ) ) {
+			continue;
+		}
+
+		$qty          = absint( $item['qty'] ?? 0 );
+		$variation_id = absint( $item['variation_id'] ?? 0 );
 
 		if ( $qty <= 0 || ! $variation_id ) {
 			continue;
@@ -136,9 +140,9 @@ function wsg_apply_bundle_pricing( $cart ) {
 	if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
 		return;
 	}
-	if ( did_action( 'woocommerce_before_calculate_totals' ) >= 2 ) {
-		return;
-	}
+
+	// No did_action() guard needed — pricing is derived from constant cart item
+	// data (_wsg_bundle_price), making this operation idempotent.
 
 	foreach ( $cart->get_cart() as $cart_item ) {
 		if ( empty( $cart_item['_wsg_is_bundle'] ) ) {
@@ -197,7 +201,7 @@ function wsg_bundle_cart_item_name( $name, $cart_item, $cart_item_key ) {
 	if ( ! empty( $display_name ) ) {
 		$label = esc_html( $display_name );
 	} else {
-		$label = esc_html( $cart_item['_wsg_bundle_qty'] ) . ' &times; ' . esc_html( $cart_item['data']->get_title() );
+		$label = absint( $cart_item['_wsg_bundle_qty'] ) . ' &times; ' . esc_html( $cart_item['data']->get_title() );
 	}
 
 	// Preserve the product permalink if available.
@@ -352,10 +356,17 @@ function wsg_cascade_bundle_removal( $cart_item_key, $cart ) {
 	// Unhook to prevent recursion.
 	remove_action( 'woocommerce_remove_cart_item', 'wsg_cascade_bundle_removal', 10 );
 
+	// Collect keys first to avoid modifying the cart while iterating.
+	$keys_to_remove = array();
+
 	foreach ( $cart->get_cart() as $key => $item ) {
 		if ( isset( $item['_wsg_bundle_id'] ) && $item['_wsg_bundle_id'] === $bundle_id ) {
-			$cart->remove_cart_item( $key );
+			$keys_to_remove[] = $key;
 		}
+	}
+
+	foreach ( $keys_to_remove as $key ) {
+		$cart->remove_cart_item( $key );
 	}
 
 	// Re-hook.

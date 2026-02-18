@@ -35,7 +35,9 @@ function wsg_detect_attributes( $product ) {
 	}
 
 	if ( is_null( $color_attr ) || is_null( $size_attr ) ) {
-		error_log( 'WSG: Could not detect color/size attributes for product #' . $product->get_id() . '. Found attributes: ' . implode( ', ', array_keys( $variation_attributes ) ) );
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'WSG: Could not detect color/size attributes for product #' . $product->get_id() . '. Found attributes: ' . implode( ', ', array_keys( $variation_attributes ) ) );
+		}
 	}
 
 	return array(

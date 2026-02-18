@@ -376,13 +376,12 @@ function wsg_admin_inline_js() {
 
 		/* --- Add tier row --- */
 		$( '#wsg_add_tier' ).on( 'click', function() {
-			var row = '<tr>' +
-				'<td><input type="number" name="_wsg_tier_min[]" min="1" value="" /></td>' +
-				'<td><input type="number" name="_wsg_tier_max[]" min="0" value="" /></td>' +
-				'<td><input type="text" name="_wsg_tier_discount[]" value="" /></td>' +
-				'<td><button type="button" class="button wsg-remove-tier">&times;</button></td>' +
-				'</tr>';
-			$( '#wsg_tiers_table tbody' ).append( row );
+			var $row = $( '<tr>' );
+			$row.append( $( '<td>' ).append( $( '<input>' ).attr({ type: 'number', name: '_wsg_tier_min[]', min: 1 }) ) );
+			$row.append( $( '<td>' ).append( $( '<input>' ).attr({ type: 'number', name: '_wsg_tier_max[]', min: 0 }) ) );
+			$row.append( $( '<td>' ).append( $( '<input>' ).attr({ type: 'text', name: '_wsg_tier_discount[]' }) ) );
+			$row.append( $( '<td>' ).append( $( '<button type="button">' ).addClass( 'button wsg-remove-tier' ).html( '&times;' ) ) );
+			$( '#wsg_tiers_table tbody' ).append( $row );
 		} );
 
 		/* --- Remove tier row --- */
