@@ -103,11 +103,11 @@ function wsg_product_add_to_cart() {
 		$variation_attributes = array();
 
 		if ( $color_attr && ! empty( $item['color_slug'] ) ) {
-			$variation_attributes[ 'attribute_' . $color_attr ] = sanitize_text_field( $item['color_slug'] );
+			$variation_attributes[ 'attribute_' . sanitize_title( $color_attr ) ] = sanitize_text_field( $item['color_slug'] );
 		}
 
 		if ( $size_attr && ! empty( $item['size_slug'] ) ) {
-			$variation_attributes[ 'attribute_' . $size_attr ] = sanitize_text_field( $item['size_slug'] );
+			$variation_attributes[ 'attribute_' . sanitize_title( $size_attr ) ] = sanitize_text_field( $item['size_slug'] );
 		}
 
 		$cart_item_data = array(

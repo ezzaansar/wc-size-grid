@@ -190,7 +190,7 @@ function wsg_build_variation_map( $product ) {
 		$color_hex   = '#cccccc';
 
 		if ( $color_attr ) {
-			$color_slug = $v['attributes'][ 'attribute_' . $color_attr ] ?? '';
+			$color_slug = $v['attributes'][ 'attribute_' . sanitize_title( $color_attr ) ] ?? '';
 
 			if ( $color_slug ) {
 				$term        = get_term_by( 'slug', $color_slug, $color_attr );
@@ -204,7 +204,7 @@ function wsg_build_variation_map( $product ) {
 		$size_label = '';
 
 		if ( $size_attr ) {
-			$size_slug = $v['attributes'][ 'attribute_' . $size_attr ] ?? '';
+			$size_slug = $v['attributes'][ 'attribute_' . sanitize_title( $size_attr ) ] ?? '';
 
 			if ( $size_slug ) {
 				$term       = get_term_by( 'slug', $size_slug, $size_attr );
