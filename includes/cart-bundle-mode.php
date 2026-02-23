@@ -55,6 +55,34 @@ function wsg_bundle_add_to_cart_handler() {
 		);
 	}
 
+	/* --- Logo customization --- */
+	$logo_attachment_id = isset( $_POST['logo_attachment_id'] ) ? absint( $_POST['logo_attachment_id'] ) : 0;
+	$logo_position      = isset( $_POST['logo_position'] ) ? sanitize_text_field( wp_unslash( $_POST['logo_position'] ) ) : '';
+	$logo_method        = isset( $_POST['logo_method'] ) ? sanitize_text_field( wp_unslash( $_POST['logo_method'] ) ) : '';
+	$has_logo           = false;
+	$logo_surcharge     = 0;
+
+	if ( $logo_attachment_id && $logo_position && $logo_method ) {
+		if ( ! wp_attachment_is_image( $logo_attachment_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid logo file.', 'wsg' ) ) );
+		}
+
+		$allowed_positions = get_post_meta( $product_id, '_wsg_logo_positions', true );
+		if ( ! is_array( $allowed_positions ) || ! in_array( $logo_position, $allowed_positions, true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid logo position.', 'wsg' ) ) );
+		}
+
+		if ( ! in_array( $logo_method, array( 'print', 'embroidery' ), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid logo method.', 'wsg' ) ) );
+		}
+
+		$logo_surcharge = ( 'embroidery' === $logo_method )
+			? floatval( get_post_meta( $product_id, '_wsg_logo_embroidery_price', true ) )
+			: floatval( get_post_meta( $product_id, '_wsg_logo_print_price', true ) );
+
+		$has_logo = true;
+	}
+
 	$bundle_id  = 'wsg_bnd_' . $product_id . '_' . uniqid();
 	$attrs      = wsg_detect_attributes( $product );
 	$color_attr = $attrs['color'];
@@ -95,6 +123,14 @@ function wsg_bundle_add_to_cart_handler() {
 			'_wsg_size_label'   => sanitize_text_field( $item['size_label'] ?? '' ),
 			'_wsg_color_hex'    => sanitize_hex_color( $item['color_hex'] ?? '' ) ?: '#cccccc',
 		);
+
+		if ( $has_logo ) {
+			$cart_item_data['_wsg_logo_attachment_id'] = $logo_attachment_id;
+			$cart_item_data['_wsg_logo_url']           = wp_get_attachment_url( $logo_attachment_id );
+			$cart_item_data['_wsg_logo_position']      = $logo_position;
+			$cart_item_data['_wsg_logo_method']         = $logo_method;
+			$cart_item_data['_wsg_logo_surcharge']     = $logo_surcharge;
+		}
 
 		/**
 		 * Filter cart item data before adding a bundle item to the cart.
@@ -149,8 +185,22 @@ function wsg_apply_bundle_pricing( $cart ) {
 			continue;
 		}
 		if ( 0 === (int) $cart_item['_wsg_bundle_index'] ) {
-			// Divide bundle price by this item's qty so WC's price × qty = bundle total.
-			$per_unit = floatval( $cart_item['_wsg_bundle_price'] ) / max( 1, $cart_item['quantity'] );
+			$bundle_total   = floatval( $cart_item['_wsg_bundle_price'] );
+			$logo_surcharge = isset( $cart_item['_wsg_logo_surcharge'] ) ? floatval( $cart_item['_wsg_logo_surcharge'] ) : 0;
+
+			// Add logo surcharge × total items in bundle.
+			if ( $logo_surcharge > 0 ) {
+				$bundle_total_qty = 0;
+				foreach ( $cart->get_cart() as $other ) {
+					if ( isset( $other['_wsg_bundle_id'] ) && $other['_wsg_bundle_id'] === $cart_item['_wsg_bundle_id'] ) {
+						$bundle_total_qty += $other['quantity'];
+					}
+				}
+				$bundle_total += $logo_surcharge * $bundle_total_qty;
+			}
+
+			// Divide by this item's qty so WC's price × qty = bundle total.
+			$per_unit = $bundle_total / max( 1, $cart_item['quantity'] );
 			$cart_item['data']->set_price( $per_unit );
 			$cart_item['data']->set_regular_price( $per_unit );
 		} else {
@@ -272,7 +322,8 @@ add_filter( 'woocommerce_checkout_cart_item_quantity', 'wsg_bundle_checkout_item
  */
 function wsg_bundle_cart_item_price( $price_html, $cart_item, $cart_item_key ) {
 	if ( ! empty( $cart_item['_wsg_is_bundle'] ) && 0 === (int) $cart_item['_wsg_bundle_index'] ) {
-		return wc_price( floatval( $cart_item['_wsg_bundle_price'] ) );
+		$total = wsg_bundle_display_total( $cart_item );
+		return wc_price( $total );
 	}
 	return $price_html;
 }
@@ -288,11 +339,35 @@ add_filter( 'woocommerce_cart_item_price', 'wsg_bundle_cart_item_price', 10, 3 )
  */
 function wsg_bundle_cart_item_subtotal( $subtotal, $cart_item, $cart_item_key ) {
 	if ( ! empty( $cart_item['_wsg_is_bundle'] ) && 0 === (int) $cart_item['_wsg_bundle_index'] ) {
-		return wc_price( floatval( $cart_item['_wsg_bundle_price'] ) );
+		$total = wsg_bundle_display_total( $cart_item );
+		return wc_price( $total );
 	}
 	return $subtotal;
 }
 add_filter( 'woocommerce_cart_item_subtotal', 'wsg_bundle_cart_item_subtotal', 10, 3 );
+
+/**
+ * Calculate bundle display total including logo surcharge.
+ *
+ * @param array $cart_item Cart item data for the bundle parent (index 0).
+ * @return float
+ */
+function wsg_bundle_display_total( $cart_item ) {
+	$total          = floatval( $cart_item['_wsg_bundle_price'] );
+	$logo_surcharge = isset( $cart_item['_wsg_logo_surcharge'] ) ? floatval( $cart_item['_wsg_logo_surcharge'] ) : 0;
+
+	if ( $logo_surcharge > 0 ) {
+		$bundle_total_qty = 0;
+		foreach ( WC()->cart->get_cart() as $other ) {
+			if ( isset( $other['_wsg_bundle_id'] ) && $other['_wsg_bundle_id'] === $cart_item['_wsg_bundle_id'] ) {
+				$bundle_total_qty += $other['quantity'];
+			}
+		}
+		$total += $logo_surcharge * $bundle_total_qty;
+	}
+
+	return $total;
+}
 
 /**
  * Display the sizes breakdown for the visible bundle parent item.
@@ -328,6 +403,37 @@ function wsg_bundle_item_data( $item_data, $cart_item ) {
 			'key'   => __( 'Sizes ordered', 'wsg' ),
 			'value' => implode( '<br>', $breakdown ),
 		);
+	}
+
+	/* --- Logo info --- */
+	if ( ! empty( $cart_item['_wsg_logo_position'] ) && ! empty( $cart_item['_wsg_logo_method'] ) ) {
+		$position_labels = wsg_get_logo_position_labels();
+		$pos_label       = isset( $position_labels[ $cart_item['_wsg_logo_position'] ] )
+			? $position_labels[ $cart_item['_wsg_logo_position'] ]
+			: $cart_item['_wsg_logo_position'];
+		$method_label    = ( 'embroidery' === $cart_item['_wsg_logo_method'] )
+			? __( 'Embroidery', 'wsg' )
+			: __( 'Print', 'wsg' );
+
+		$logo_display = esc_html( $pos_label ) . ' &mdash; ' . esc_html( $method_label );
+
+		if ( ! empty( $cart_item['_wsg_logo_url'] ) ) {
+			$logo_display .= '<br><img src="' . esc_url( $cart_item['_wsg_logo_url'] ) . '" alt="'
+				. esc_attr__( 'Logo', 'wsg' ) . '" style="max-width:40px;max-height:40px;vertical-align:middle;margin-top:4px;">';
+		}
+
+		$item_data[] = array(
+			'key'   => __( 'Logo', 'wsg' ),
+			'value' => $logo_display,
+		);
+
+		$surcharge = isset( $cart_item['_wsg_logo_surcharge'] ) ? floatval( $cart_item['_wsg_logo_surcharge'] ) : 0;
+		if ( $surcharge > 0 ) {
+			$item_data[] = array(
+				'key'   => __( 'Logo surcharge', 'wsg' ),
+				'value' => '+' . wp_kses_post( wc_price( $surcharge ) ) . ' ' . esc_html__( 'per item', 'wsg' ),
+			);
+		}
 	}
 
 	return $item_data;

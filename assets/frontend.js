@@ -35,7 +35,13 @@
 
 	var state = {
 		selectedColors: [],   // array of colour slugs
-		quantities: {}        // { 'navy::s': 3, 'navy::m': 5, ... }
+		quantities: {},       // { 'navy::s': 3, 'navy::m': 5, ... }
+		logo: {
+			attachmentId: null,
+			url:          null,
+			position:     null,
+			method:       'print'
+		}
 	};
 
 	/* ───────────────────────────────────────────
@@ -123,6 +129,149 @@
 		// Bundle mode gets a selected-colours pill container.
 		if (wsgData.mode === 'bundle') {
 			$root.append('<div class="wsg-selected-colors"></div>');
+		}
+	}
+
+	/* ───────────────────────────────────────────
+	 * Render: Logo Customization Section
+	 * ─────────────────────────────────────────── */
+
+	function renderLogoSection() {
+		if (!wsgData.logoEnabled) {
+			return null;
+		}
+
+		var $section = $('<div class="wsg-logo-section wsg-logo-section--collapsed">');
+
+		// Clickable accordion header.
+		var $header = $('<div class="wsg-logo-header">');
+		var $title  = $('<h3 class="wsg-section-title">');
+		$title.append(document.createTextNode(wsgData.i18n.logoTitle + ' '));
+		$title.append($('<span class="wsg-logo-optional">').text(wsgData.i18n.logoOptional));
+		$header.append($title);
+		$header.append($('<span class="wsg-logo-chevron">'));
+		$section.append($header);
+
+		// Collapsible body.
+		var $body = $('<div class="wsg-logo-body">');
+
+		// Hidden file input.
+		$body.append(
+			$('<input type="file" class="wsg-logo-file-input" accept="image/*">').css('display', 'none')
+		);
+
+		// Drag-and-drop zone.
+		var $dropzone = $('<div class="wsg-logo-dropzone">');
+		$dropzone.append($('<div class="wsg-logo-drop-icon">'));
+		$dropzone.append($('<div class="wsg-logo-drop-text">').text(wsgData.i18n.uploadLogo));
+		$dropzone.append($('<div class="wsg-logo-drop-hint">').text(wsgData.i18n.dragDrop));
+		// Spinner (hidden).
+		var $spinner = $('<div class="wsg-logo-spinner">').css('display', 'none');
+		$spinner.append($('<span class="wsg-logo-spinner-dot">'));
+		$spinner.append(document.createTextNode(' ' + wsgData.i18n.uploading));
+		$dropzone.append($spinner);
+		$body.append($dropzone);
+
+		// Preview card (hidden initially).
+		var $preview = $('<div class="wsg-logo-preview">').css('display', 'none');
+		$preview.append(
+			$('<img class="wsg-logo-preview-img">').attr('alt', 'Logo')
+		);
+		var $previewInfo = $('<div class="wsg-logo-preview-info">');
+		$previewInfo.append(
+			$('<span class="wsg-logo-preview-status">').text(wsgData.i18n.logoUploaded)
+		);
+		var $previewActions = $('<div class="wsg-logo-preview-actions">');
+		$previewActions.append(
+			$('<button type="button" class="wsg-logo-change">').text(wsgData.i18n.changeLogo)
+		);
+		$previewActions.append(
+			$('<button type="button" class="wsg-logo-remove">').text(wsgData.i18n.removeLogo)
+		);
+		$previewInfo.append($previewActions);
+		$preview.append($previewInfo);
+		$body.append($preview);
+
+		// Options panel (hidden until logo uploaded).
+		var $options = $('<div class="wsg-logo-options">').css('display', 'none');
+
+		// Position pills.
+		var $posGroup = $('<div class="wsg-logo-field">');
+		$posGroup.append($('<label class="wsg-logo-field-label">').text(wsgData.i18n.position));
+		var $posPills = $('<div class="wsg-logo-position-pills">');
+		$.each(wsgData.logoPositions, function(i, pos) {
+			$posPills.append(
+				$('<button type="button" class="wsg-logo-pos-pill">')
+					.attr('data-position', pos.slug)
+					.text(pos.label)
+			);
+		});
+		$posGroup.append($posPills);
+		$options.append($posGroup);
+
+		// Method cards.
+		var printPrice = parseFloat(wsgData.logoPrintPrice) || 0;
+		var embPrice   = parseFloat(wsgData.logoEmbroideryPrice) || 0;
+
+		var $methodGroup = $('<div class="wsg-logo-field">');
+		$methodGroup.append($('<label class="wsg-logo-field-label">').text(wsgData.i18n.method));
+		var $methods = $('<div class="wsg-logo-method-cards">');
+
+		var $printCard = $('<button type="button" class="wsg-logo-method-card wsg-logo-method-card--active">')
+			.attr('data-method', 'print');
+		$printCard.append($('<span class="wsg-method-icon wsg-method-icon--print">'));
+		$printCard.append($('<span class="wsg-method-name">').text(wsgData.i18n.print));
+		if (printPrice > 0) {
+			$printCard.append($('<span class="wsg-method-price">').text('+' + wsgFormatPrice(printPrice)));
+		}
+		$methods.append($printCard);
+
+		var $embCard = $('<button type="button" class="wsg-logo-method-card">')
+			.attr('data-method', 'embroidery');
+		$embCard.append($('<span class="wsg-method-icon wsg-method-icon--embroidery">'));
+		$embCard.append($('<span class="wsg-method-name">').text(wsgData.i18n.embroidery));
+		if (embPrice > 0) {
+			$embCard.append($('<span class="wsg-method-price">').text('+' + wsgFormatPrice(embPrice)));
+		}
+		$methods.append($embCard);
+
+		$methodGroup.append($methods);
+		$options.append($methodGroup);
+
+		// Surcharge note.
+		$options.append($('<div class="wsg-logo-surcharge">'));
+
+		$body.append($options);
+		$section.append($body);
+
+		return $section;
+	}
+
+	/* ───────────────────────────────────────────
+	 * Logo: get current surcharge
+	 * ─────────────────────────────────────────── */
+
+	function getLogoSurcharge() {
+		if (!wsgData.logoEnabled || !state.logo.attachmentId) {
+			return 0;
+		}
+		if (state.logo.method === 'embroidery') {
+			return parseFloat(wsgData.logoEmbroideryPrice) || 0;
+		}
+		return parseFloat(wsgData.logoPrintPrice) || 0;
+	}
+
+	/* ───────────────────────────────────────────
+	 * Logo: update surcharge note text
+	 * ─────────────────────────────────────────── */
+
+	function updateLogoSurchargeNote() {
+		var surcharge = getLogoSurcharge();
+		var $note     = $('.wsg-logo-surcharge');
+		if (surcharge > 0) {
+			$note.text(wsgData.i18n.logoSurcharge.replace('%s', wsgFormatPrice(surcharge)));
+		} else {
+			$note.text('');
 		}
 	}
 
@@ -255,6 +404,10 @@
 			totalQty += parseInt(qty, 10) || 0;
 		});
 
+		// Logo surcharge.
+		var logoSurcharge    = getLogoSurcharge();
+		var logoIncomplete   = state.logo.attachmentId && !state.logo.position;
+
 		if (wsgData.mode === 'product') {
 			// --- Product mode ---
 			var tier      = getMatchingTier(totalQty);
@@ -282,7 +435,7 @@
 					}
 				});
 
-				totalPrice += (sizePrice - discount) * qty;
+				totalPrice += (sizePrice - discount + logoSurcharge) * qty;
 			});
 
 			// Prevent negative totals.
@@ -309,8 +462,8 @@
 				wsgData.i18n.total.replace('%s', wsgFormatPrice(totalPrice))
 			);
 
-			// Enable button if at least 1 item.
-			$('.wsg-add-to-cart').prop('disabled', totalQty <= 0);
+			// Enable button if at least 1 item and logo is not incomplete.
+			$('.wsg-add-to-cart').prop('disabled', totalQty <= 0 || logoIncomplete);
 
 		} else {
 			// --- Bundle mode ---
@@ -339,14 +492,18 @@
 				wsgData.i18n.remaining.replace('%d', Math.max(remaining, 0))
 			);
 
-			// Price.
+			// Price (bundle base + logo surcharge).
+			var bundleTotal = parseFloat(wsgData.bundlePrice) + (logoSurcharge * bundleQty);
 			$('.wsg-totals-price strong').text(
-				wsgData.i18n.bundlePrice.replace('%s', wsgFormatPrice(wsgData.bundlePrice))
+				wsgData.i18n.bundlePrice.replace('%s', wsgFormatPrice(bundleTotal))
 			);
 
-			// Enable only when exact qty met.
-			$('.wsg-add-to-cart').prop('disabled', totalQty !== bundleQty);
+			// Enable only when exact qty met and logo not incomplete.
+			$('.wsg-add-to-cart').prop('disabled', totalQty !== bundleQty || logoIncomplete);
 		}
+
+		// Update logo surcharge note.
+		updateLogoSurchargeNote();
 	}
 
 	/* ───────────────────────────────────────────
@@ -498,6 +655,215 @@
 	}
 
 	/* ───────────────────────────────────────────
+	 * Event: Logo accordion toggle
+	 * ─────────────────────────────────────────── */
+
+	function handleLogoToggle() {
+		$(this).closest('.wsg-logo-section').toggleClass('wsg-logo-section--collapsed');
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Logo dropzone click
+	 * ─────────────────────────────────────────── */
+
+	function handleDropzoneClick(e) {
+		if ($(e.target).closest('.wsg-logo-preview').length) {
+			return;
+		}
+		$('.wsg-logo-file-input').trigger('click');
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Logo change button click
+	 * ─────────────────────────────────────────── */
+
+	function handleLogoChangeClick(e) {
+		e.preventDefault();
+		$('.wsg-logo-file-input').trigger('click');
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Logo drag events
+	 * ─────────────────────────────────────────── */
+
+	function handleDragOver(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		$(this).addClass('wsg-logo-dropzone--dragover');
+	}
+
+	function handleDragLeave(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		$(this).removeClass('wsg-logo-dropzone--dragover');
+	}
+
+	function handleDrop(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		$(this).removeClass('wsg-logo-dropzone--dragover');
+
+		var files = e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.files;
+		if (files && files.length) {
+			processLogoFile(files[0]);
+		}
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Logo file selected (input change)
+	 * ─────────────────────────────────────────── */
+
+	function handleLogoFileChange() {
+		var file = this.files && this.files[0];
+		if (!file) {
+			return;
+		}
+		processLogoFile(file);
+	}
+
+	/* ───────────────────────────────────────────
+	 * Logo: process and upload a file
+	 * ─────────────────────────────────────────── */
+
+	function processLogoFile(file) {
+		// Client-side type validation.
+		var allowed = (wsgData.logoAllowedTypes || '').split(',');
+		if (allowed.length && allowed.indexOf(file.type) === -1) {
+			$('.wsg-message')
+				.removeClass('wsg-message--success')
+				.addClass('wsg-message--error')
+				.text(wsgData.i18n.invalidFileType)
+				.fadeIn();
+			return;
+		}
+
+		// Client-side size validation.
+		var maxSize = parseInt(wsgData.logoMaxSize, 10) || (5 * 1024 * 1024);
+		if (file.size > maxSize) {
+			$('.wsg-message')
+				.removeClass('wsg-message--success')
+				.addClass('wsg-message--error')
+				.text(wsgData.i18n.fileTooLarge)
+				.fadeIn();
+			return;
+		}
+
+		// Show uploading state.
+		var $dropzone = $('.wsg-logo-dropzone');
+		$dropzone.addClass('wsg-logo-dropzone--uploading');
+		$dropzone.find('.wsg-logo-drop-icon, .wsg-logo-drop-text, .wsg-logo-drop-hint').hide();
+		$dropzone.find('.wsg-logo-spinner').show();
+
+		var formData = new FormData();
+		formData.append('logo_file', file);
+		formData.append('security', wsgData.nonce);
+
+		$.ajax({
+			url:         wsgData.logoUploadUrl,
+			method:      'POST',
+			data:        formData,
+			processData: false,
+			contentType: false,
+			success: function(response) {
+				if (response.success) {
+					state.logo.attachmentId = response.data.attachment_id;
+					state.logo.url          = response.data.url;
+
+					// Hide dropzone, show preview card.
+					$dropzone.hide();
+					$('.wsg-logo-preview-img').attr('src', response.data.thumbnail || response.data.url);
+					$('.wsg-logo-preview').show();
+					$('.wsg-logo-options').show();
+
+					// Auto-expand if collapsed.
+					$('.wsg-logo-section').removeClass('wsg-logo-section--collapsed');
+
+					updateTotals();
+				} else {
+					var msg = (response.data && response.data.message) ? response.data.message : wsgData.i18n.error;
+					$('.wsg-message')
+						.removeClass('wsg-message--success')
+						.addClass('wsg-message--error')
+						.text(msg)
+						.fadeIn();
+				}
+			},
+			error: function() {
+				$('.wsg-message')
+					.removeClass('wsg-message--success')
+					.addClass('wsg-message--error')
+					.text(wsgData.i18n.error)
+					.fadeIn();
+			},
+			complete: function() {
+				// Restore dropzone state.
+				$dropzone.removeClass('wsg-logo-dropzone--uploading');
+				$dropzone.find('.wsg-logo-spinner').hide();
+				$dropzone.find('.wsg-logo-drop-icon, .wsg-logo-drop-text, .wsg-logo-drop-hint').show();
+				// Reset file input so same file can be re-selected.
+				$('.wsg-logo-file-input').val('');
+			}
+		});
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Logo remove
+	 * ─────────────────────────────────────────── */
+
+	function handleLogoRemove(e) {
+		e.preventDefault();
+
+		state.logo.attachmentId = null;
+		state.logo.url          = null;
+		state.logo.position     = null;
+		state.logo.method       = 'print';
+
+		// Reset UI: show dropzone, hide preview and options.
+		$('.wsg-logo-preview').hide();
+		$('.wsg-logo-options').hide();
+		$('.wsg-logo-dropzone').show();
+
+		// Reset position pills.
+		$('.wsg-logo-pos-pill').removeClass('wsg-logo-pos-pill--active');
+
+		// Reset method cards to Print.
+		$('.wsg-logo-method-card').removeClass('wsg-logo-method-card--active');
+		$('.wsg-logo-method-card[data-method="print"]').addClass('wsg-logo-method-card--active');
+
+		updateTotals();
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Logo position pill click
+	 * ─────────────────────────────────────────── */
+
+	function handleLogoPositionPill(e) {
+		e.preventDefault();
+		var $pill = $(this);
+
+		$('.wsg-logo-pos-pill').removeClass('wsg-logo-pos-pill--active');
+		$pill.addClass('wsg-logo-pos-pill--active');
+
+		state.logo.position = $pill.data('position');
+		updateTotals();
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Logo method card click
+	 * ─────────────────────────────────────────── */
+
+	function handleLogoMethodCard(e) {
+		e.preventDefault();
+		var $card = $(this);
+
+		$('.wsg-logo-method-card').removeClass('wsg-logo-method-card--active');
+		$card.addClass('wsg-logo-method-card--active');
+
+		state.logo.method = $card.data('method');
+		updateTotals();
+	}
+
+	/* ───────────────────────────────────────────
 	 * Event: Add to Cart (AJAX)
 	 * ─────────────────────────────────────────── */
 
@@ -557,15 +923,25 @@
 		var $message = $('.wsg-message');
 		$message.hide().removeClass('wsg-message--success wsg-message--error').text('');
 
+		// Build AJAX data.
+		var ajaxData = {
+			security:   wsgData.nonce,
+			product_id: wsgData.productId,
+			mode:       wsgData.mode,
+			items:      JSON.stringify(items)
+		};
+
+		// Append logo data if present.
+		if (state.logo.attachmentId && state.logo.position && state.logo.method) {
+			ajaxData.logo_attachment_id = state.logo.attachmentId;
+			ajaxData.logo_position      = state.logo.position;
+			ajaxData.logo_method        = state.logo.method;
+		}
+
 		$.ajax({
 			url:    wsgData.ajaxUrl,
 			method: 'POST',
-			data: {
-				security:   wsgData.nonce,
-				product_id: wsgData.productId,
-				mode:       wsgData.mode,
-				items:      JSON.stringify(items)
-			},
+			data:   ajaxData,
 			success: function(response) {
 				if (response.success) {
 					// Show success message.
@@ -591,6 +967,18 @@
 					// Reset quantities and grid inputs.
 					state.quantities = {};
 					$('.wsg-qty-input').val(0);
+
+					// Reset logo state.
+					if (wsgData.logoEnabled) {
+						state.logo = { attachmentId: null, url: null, position: null, method: 'print' };
+						$('.wsg-logo-preview').hide();
+						$('.wsg-logo-options').hide();
+						$('.wsg-logo-dropzone').show();
+						$('.wsg-logo-pos-pill').removeClass('wsg-logo-pos-pill--active');
+						$('.wsg-logo-method-card').removeClass('wsg-logo-method-card--active');
+						$('.wsg-logo-method-card[data-method="print"]').addClass('wsg-logo-method-card--active');
+					}
+
 					updateTotals();
 				} else {
 					// Show error message.
@@ -632,6 +1020,13 @@
 
 		// Render static UI.
 		renderSwatches();
+
+		// Logo section (between swatches and grids).
+		var $logoSection = renderLogoSection();
+		if ($logoSection) {
+			$root.append($logoSection);
+		}
+
 		$root.append('<div class="wsg-grids-container"></div>');
 		$root.append(renderTotals());
 		$root.append(renderButton());
@@ -641,6 +1036,18 @@
 		$root.on('click', '.wsg-pill-remove', handlePillRemove);
 		$root.on('input change', '.wsg-qty-input', handleQtyChange);
 		$root.on('click', '.wsg-add-to-cart', handleAddToCart);
+
+		// Logo events.
+		$root.on('click', '.wsg-logo-header', handleLogoToggle);
+		$root.on('click', '.wsg-logo-dropzone', handleDropzoneClick);
+		$root.on('dragenter dragover', '.wsg-logo-dropzone', handleDragOver);
+		$root.on('dragleave', '.wsg-logo-dropzone', handleDragLeave);
+		$root.on('drop', '.wsg-logo-dropzone', handleDrop);
+		$root.on('change', '.wsg-logo-file-input', handleLogoFileChange);
+		$root.on('click', '.wsg-logo-change', handleLogoChangeClick);
+		$root.on('click', '.wsg-logo-remove', handleLogoRemove);
+		$root.on('click', '.wsg-logo-pos-pill', handleLogoPositionPill);
+		$root.on('click', '.wsg-logo-method-card', handleLogoMethodCard);
 
 		// Auto-select first colour in product mode.
 		if (wsgData.mode === 'product' && colorKeys.length > 0 && colorKeys[0] !== 'default') {

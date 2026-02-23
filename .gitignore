@@ -1,0 +1,30 @@
+# Dev/build tools
+data/
+scripts/
+.claude/
+node_modules/
+vendor/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+debug.log
+
+# Environment
+.env
+.env.*
+
+# Archives
+*.zip
+*.tar.gz

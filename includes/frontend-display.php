@@ -68,6 +68,9 @@ function wsg_enqueue_assets() {
 	/* --- Mode & settings --- */
 	$mode         = get_post_meta( $product->get_id(), '_wsg_mode', true ) ?: 'product';
 	$tiers        = get_post_meta( $product->get_id(), '_wsg_discount_tiers', true ) ?: array();
+	if ( is_string( $tiers ) ) {
+		$tiers = json_decode( $tiers, true ) ?: array();
+	}
 	$bundle_qty   = absint( get_post_meta( $product->get_id(), '_wsg_bundle_qty', true ) );
 	$bundle_price = floatval( get_post_meta( $product->get_id(), '_wsg_bundle_price', true ) );
 
@@ -87,25 +90,68 @@ function wsg_enqueue_assets() {
 		'decimals'          => wc_get_price_decimals(),
 		'colorSizeMap'      => $color_size_map,
 		'i18n'              => array(
-			'addToCart'    => __( 'Add to Cart', 'wsg' ),
-			'addBundle'    => __( 'Add Bundle to Cart', 'wsg' ),
-			'adding'       => __( 'Adding...', 'wsg' ),
-			'added'        => __( 'Added to cart', 'wsg' ),
-			'outOfStock'   => __( 'Out of stock', 'wsg' ),
-			'youSave'      => __( 'You save %s per item', 'wsg' ),
-			'totalItems'   => __( 'Total: %d items', 'wsg' ),
-			'itemsOf'      => __( '%1$d of %2$d items', 'wsg' ),
-			'remaining'    => __( '%d remaining', 'wsg' ),
-			'bundlePrice'  => __( 'Bundle price: %s', 'wsg' ),
-			'selectColour' => __( 'Select a colour', 'wsg' ),
-			'selectSize'   => __( 'Select sizes and quantities', 'wsg' ),
-			'size'         => __( 'Size', 'wsg' ),
-			'price'        => __( 'Price', 'wsg' ),
-			'qty'          => __( 'Qty', 'wsg' ),
-			'total'        => __( 'Total: %s', 'wsg' ),
-			'error'        => __( 'An error occurred. Please try again.', 'wsg' ),
+			'addToCart'       => __( 'Add to Cart', 'wsg' ),
+			'addBundle'       => __( 'Add Bundle to Cart', 'wsg' ),
+			'adding'          => __( 'Adding...', 'wsg' ),
+			'added'           => __( 'Added to cart', 'wsg' ),
+			'outOfStock'      => __( 'Out of stock', 'wsg' ),
+			'youSave'         => __( 'You save %s per item', 'wsg' ),
+			'totalItems'      => __( 'Total: %d items', 'wsg' ),
+			'itemsOf'         => __( '%1$d of %2$d items', 'wsg' ),
+			'remaining'       => __( '%d remaining', 'wsg' ),
+			'bundlePrice'     => __( 'Bundle price: %s', 'wsg' ),
+			'selectColour'    => __( 'Select a colour', 'wsg' ),
+			'selectSize'      => __( 'Select sizes and quantities', 'wsg' ),
+			'size'            => __( 'Size', 'wsg' ),
+			'price'           => __( 'Price', 'wsg' ),
+			'qty'             => __( 'Qty', 'wsg' ),
+			'total'           => __( 'Total: %s', 'wsg' ),
+			'error'           => __( 'An error occurred. Please try again.', 'wsg' ),
+			'logoTitle'       => __( 'Logo Customization', 'wsg' ),
+			'logoOptional'    => __( '(Optional)', 'wsg' ),
+			'uploadLogo'      => __( 'Upload Logo', 'wsg' ),
+			'changeLogo'      => __( 'Change Logo', 'wsg' ),
+			'removeLogo'      => __( 'Remove', 'wsg' ),
+			'uploading'       => __( 'Uploading...', 'wsg' ),
+			'position'        => __( 'Position', 'wsg' ),
+			'method'          => __( 'Method', 'wsg' ),
+			'print'           => __( 'Print', 'wsg' ),
+			'embroidery'      => __( 'Embroidery', 'wsg' ),
+			'logoSurcharge'   => __( '+%s per item for logo', 'wsg' ),
+			'fileTooLarge'    => __( 'File is too large. Maximum size is 5 MB.', 'wsg' ),
+			'invalidFileType' => __( 'Invalid file type. Please upload a JPG, PNG, GIF, or WebP image.', 'wsg' ),
+			'selectPosition'  => __( '-- Select position --', 'wsg' ),
+			'dragDrop'        => __( 'or drag and drop', 'wsg' ),
+			'logoUploaded'    => __( 'Logo uploaded', 'wsg' ),
 		),
 	);
+
+	/* --- Logo customization data --- */
+	$logo_enabled = get_post_meta( $product->get_id(), '_wsg_logo_enabled', true ) === 'yes';
+	$data['logoEnabled'] = $logo_enabled;
+
+	if ( $logo_enabled ) {
+		$positions_raw = get_post_meta( $product->get_id(), '_wsg_logo_positions', true );
+		$positions     = is_array( $positions_raw ) ? $positions_raw : array();
+		$all_labels    = wsg_get_logo_position_labels();
+
+		$logo_positions = array();
+		foreach ( $positions as $slug ) {
+			if ( isset( $all_labels[ $slug ] ) ) {
+				$logo_positions[] = array(
+					'slug'  => $slug,
+					'label' => $all_labels[ $slug ],
+				);
+			}
+		}
+
+		$data['logoPositions']       = $logo_positions;
+		$data['logoPrintPrice']      = floatval( get_post_meta( $product->get_id(), '_wsg_logo_print_price', true ) );
+		$data['logoEmbroideryPrice'] = floatval( get_post_meta( $product->get_id(), '_wsg_logo_embroidery_price', true ) );
+		$data['logoUploadUrl']       = WC_AJAX::get_endpoint( 'wsg_upload_logo' );
+		$data['logoMaxSize']         = 5 * MB_IN_BYTES;
+		$data['logoAllowedTypes']    = 'image/jpeg,image/png,image/gif,image/webp';
+	}
 
 	$data = apply_filters( 'wsg_localized_data', $data, $product );
 

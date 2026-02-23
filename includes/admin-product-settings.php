@@ -61,6 +61,45 @@ function wsg_admin_tab_icon() {
 		#woocommerce-product-data ul.wc-tabs li.wsg_size_grid_options a::before {
 			content: "\f163";
 		}
+		#wsg_size_grid_panel .wsg-position-chips {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 6px;
+		}
+		#wsg_size_grid_panel .wsg-position-chip {
+			display: inline-block;
+			margin: 0;
+			float: none;
+			width: auto;
+			padding: 0;
+			cursor: pointer;
+		}
+		#wsg_size_grid_panel .wsg-position-chip input[type="checkbox"] {
+			position: absolute;
+			opacity: 0;
+			width: 0;
+			height: 0;
+		}
+		#wsg_size_grid_panel .wsg-position-chip__label {
+			display: inline-block;
+			padding: 5px 14px;
+			border: 1px solid #c3c4c7;
+			border-radius: 16px;
+			font-size: 13px;
+			line-height: 1.4;
+			background: #f0f0f1;
+			color: #50575e;
+			transition: all 0.15s ease;
+			user-select: none;
+		}
+		#wsg_size_grid_panel .wsg-position-chip input:checked + .wsg-position-chip__label {
+			background: #2271b1;
+			border-color: #2271b1;
+			color: #fff;
+		}
+		#wsg_size_grid_panel .wsg-position-chip:hover .wsg-position-chip__label {
+			border-color: #2271b1;
+		}
 	</style>
 	<?php
 }
@@ -90,6 +129,19 @@ function wsg_product_data_panel() {
 	$bundle_price = get_post_meta( $post_id, '_wsg_bundle_price', true );
 	$display_name = get_post_meta( $post_id, '_wsg_bundle_display_name', true );
 
+	/* Logo customization meta. */
+	$logo_enabled         = get_post_meta( $post_id, '_wsg_logo_enabled', true );
+	$logo_positions       = get_post_meta( $post_id, '_wsg_logo_positions', true );
+	$logo_print_price     = get_post_meta( $post_id, '_wsg_logo_print_price', true );
+	$logo_embroidery_price = get_post_meta( $post_id, '_wsg_logo_embroidery_price', true );
+
+	if ( ! is_array( $logo_positions ) ) {
+		$logo_positions = array();
+	}
+
+	if ( is_string( $tiers ) && ! empty( $tiers ) ) {
+		$tiers = json_decode( $tiers, true );
+	}
 	if ( ! is_array( $tiers ) ) {
 		$tiers = array();
 	}
@@ -240,6 +292,86 @@ function wsg_product_data_panel() {
 
 		</div><!-- #wsg_bundle_fields -->
 
+		<!-- e) Logo Customization fields -->
+		<div id="wsg_logo_fields">
+
+			<div class="options_group">
+				<h4 style="padding-left:12px;">
+					<span class="dashicons dashicons-format-image" style="vertical-align:middle;margin-right:4px;color:#646970;"></span>
+					<?php esc_html_e( 'Logo Customization', 'wsg' ); ?>
+				</h4>
+
+				<?php
+				woocommerce_wp_checkbox(
+					array(
+						'id'          => '_wsg_logo_enabled',
+						'label'       => __( 'Enable Logo Option', 'wsg' ),
+						'value'       => $logo_enabled,
+						'description' => __( 'Allow customers to upload a logo on this product.', 'wsg' ),
+					)
+				);
+				?>
+
+				<div id="wsg_logo_options" style="display:none;">
+
+					<p class="form-field">
+						<label style="float:left;width:150px;padding:4px 0 0;">
+							<?php esc_html_e( 'Available Positions', 'wsg' ); ?>
+						</label>
+						<span class="wsg-position-chips">
+							<?php
+							$all_positions = wsg_get_logo_position_labels();
+							foreach ( $all_positions as $slug => $label ) :
+								?>
+								<label class="wsg-position-chip">
+									<input
+										type="checkbox"
+										name="_wsg_logo_positions[]"
+										value="<?php echo esc_attr( $slug ); ?>"
+										<?php checked( in_array( $slug, $logo_positions, true ) ); ?>
+									/>
+									<span class="wsg-position-chip__label"><?php echo esc_html( $label ); ?></span>
+								</label>
+							<?php endforeach; ?>
+						</span>
+					</p>
+
+					<p class="form-field" style="margin-bottom:4px;">
+						<label style="float:left;width:150px;padding:4px 0 0;">
+							<?php esc_html_e( 'Surcharge Pricing', 'wsg' ); ?>
+						</label>
+					</p>
+
+					<?php
+					woocommerce_wp_text_input(
+						array(
+							'id'          => '_wsg_logo_print_price',
+							'label'       => __( 'Print Surcharge (&pound;)', 'wsg' ),
+							'type'        => 'text',
+							'value'       => $logo_print_price ? $logo_print_price : '',
+							'description' => __( 'Extra cost per item for printed logos.', 'wsg' ),
+							'desc_tip'    => true,
+						)
+					);
+
+					woocommerce_wp_text_input(
+						array(
+							'id'          => '_wsg_logo_embroidery_price',
+							'label'       => __( 'Embroidery Surcharge (&pound;)', 'wsg' ),
+							'type'        => 'text',
+							'value'       => $logo_embroidery_price ? $logo_embroidery_price : '',
+							'description' => __( 'Extra cost per item for embroidered logos.', 'wsg' ),
+							'desc_tip'    => true,
+						)
+					);
+					?>
+
+				</div><!-- #wsg_logo_options -->
+
+			</div>
+
+		</div><!-- #wsg_logo_fields -->
+
 	</div><!-- #wsg_size_grid_panel -->
 	<?php
 }
@@ -337,6 +469,29 @@ function wsg_save_product_settings( $post_id ) {
 		? sanitize_text_field( wp_unslash( $_POST['_wsg_bundle_display_name'] ) )
 		: '';
 	update_post_meta( $post_id, '_wsg_bundle_display_name', $display_name );
+
+	/* --- Logo Customization --- */
+	$logo_enabled = isset( $_POST['_wsg_logo_enabled'] ) ? 'yes' : '';
+	update_post_meta( $post_id, '_wsg_logo_enabled', $logo_enabled );
+
+	$valid_positions = array_keys( wsg_get_logo_position_labels() );
+	$logo_positions  = isset( $_POST['_wsg_logo_positions'] )
+		? array_intersect(
+			array_map( 'sanitize_text_field', wp_unslash( $_POST['_wsg_logo_positions'] ) ),
+			$valid_positions
+		)
+		: array();
+	update_post_meta( $post_id, '_wsg_logo_positions', array_values( $logo_positions ) );
+
+	$logo_print_price = isset( $_POST['_wsg_logo_print_price'] )
+		? floatval( wp_unslash( $_POST['_wsg_logo_print_price'] ) )
+		: 0;
+	update_post_meta( $post_id, '_wsg_logo_print_price', $logo_print_price );
+
+	$logo_embroidery_price = isset( $_POST['_wsg_logo_embroidery_price'] )
+		? floatval( wp_unslash( $_POST['_wsg_logo_embroidery_price'] ) )
+		: 0;
+	update_post_meta( $post_id, '_wsg_logo_embroidery_price', $logo_embroidery_price );
 }
 
 /* ───────────────────────────────────────────
@@ -388,6 +543,13 @@ function wsg_admin_inline_js() {
 		$( document ).on( 'click', '.wsg-remove-tier', function() {
 			$( this ).closest( 'tr' ).remove();
 		} );
+
+		/* --- Toggle logo options --- */
+		function wsgToggleLogo() {
+			$( '#wsg_logo_options' ).toggle( $( '#_wsg_logo_enabled' ).is( ':checked' ) );
+		}
+		$( '#_wsg_logo_enabled' ).on( 'change', wsgToggleLogo );
+		wsgToggleLogo();
 
 	} );
 	</script>

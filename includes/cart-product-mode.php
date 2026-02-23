@@ -59,10 +59,41 @@ function wsg_product_add_to_cart() {
 		$total_qty += absint( $item['qty'] );
 	}
 
-	$tiers    = get_post_meta( $product_id, '_wsg_discount_tiers', true );
+	$tiers = get_post_meta( $product_id, '_wsg_discount_tiers', true );
+	if ( is_string( $tiers ) ) {
+		$tiers = json_decode( $tiers, true );
+	}
 	$tiers    = is_array( $tiers ) ? $tiers : array();
 	$discount = wsg_get_discount_for_qty( $tiers, $total_qty );
 	$discount = floatval( apply_filters( 'wsg_discount_amount', $discount, $product_id, $total_qty ) );
+
+	/* --- Logo customization --- */
+	$logo_attachment_id = isset( $_POST['logo_attachment_id'] ) ? absint( $_POST['logo_attachment_id'] ) : 0;
+	$logo_position      = isset( $_POST['logo_position'] ) ? sanitize_text_field( wp_unslash( $_POST['logo_position'] ) ) : '';
+	$logo_method        = isset( $_POST['logo_method'] ) ? sanitize_text_field( wp_unslash( $_POST['logo_method'] ) ) : '';
+	$has_logo           = false;
+	$logo_surcharge     = 0;
+
+	if ( $logo_attachment_id && $logo_position && $logo_method ) {
+		if ( ! wp_attachment_is_image( $logo_attachment_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid logo file.', 'wsg' ) ) );
+		}
+
+		$allowed_positions = get_post_meta( $product_id, '_wsg_logo_positions', true );
+		if ( ! is_array( $allowed_positions ) || ! in_array( $logo_position, $allowed_positions, true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid logo position.', 'wsg' ) ) );
+		}
+
+		if ( ! in_array( $logo_method, array( 'print', 'embroidery' ), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid logo method.', 'wsg' ) ) );
+		}
+
+		$logo_surcharge = ( 'embroidery' === $logo_method )
+			? floatval( get_post_meta( $product_id, '_wsg_logo_embroidery_price', true ) )
+			: floatval( get_post_meta( $product_id, '_wsg_logo_print_price', true ) );
+
+		$has_logo = true;
+	}
 
 	$group_id       = 'wsg_' . $product_id . '_' . uniqid();
 	$cart_item_keys = array();
@@ -115,6 +146,14 @@ function wsg_product_add_to_cart() {
 			'_wsg_discount'   => $discount,
 			'_wsg_base_price' => floatval( $variation->get_price() ),
 		);
+
+		if ( $has_logo ) {
+			$cart_item_data['_wsg_logo_attachment_id'] = $logo_attachment_id;
+			$cart_item_data['_wsg_logo_url']           = wp_get_attachment_url( $logo_attachment_id );
+			$cart_item_data['_wsg_logo_position']      = $logo_position;
+			$cart_item_data['_wsg_logo_method']         = $logo_method;
+			$cart_item_data['_wsg_logo_surcharge']     = $logo_surcharge;
+		}
 
 		/**
 		 * Filters cart item data before adding to cart.
@@ -199,7 +238,10 @@ function wsg_apply_bulk_discount( $cart ) {
 	$product_discounts = array();
 
 	foreach ( $product_qtys as $pid => $total_qty ) {
-		$tiers    = get_post_meta( $pid, '_wsg_discount_tiers', true );
+		$tiers = get_post_meta( $pid, '_wsg_discount_tiers', true );
+		if ( is_string( $tiers ) ) {
+			$tiers = json_decode( $tiers, true );
+		}
 		$tiers    = is_array( $tiers ) ? $tiers : array();
 		$discount = wsg_get_discount_for_qty( $tiers, $total_qty );
 
@@ -212,10 +254,14 @@ function wsg_apply_bulk_discount( $cart ) {
 			continue;
 		}
 
-		$pid      = $cart_item['product_id'];
-		$discount = isset( $product_discounts[ $pid ] ) ? $product_discounts[ $pid ] : 0;
+		$pid            = $cart_item['product_id'];
+		$discount       = isset( $product_discounts[ $pid ] ) ? $product_discounts[ $pid ] : 0;
+		$logo_surcharge = isset( $cart_item['_wsg_logo_surcharge'] )
+			? floatval( $cart_item['_wsg_logo_surcharge'] )
+			: 0;
 
-		if ( $discount <= 0 ) {
+		// Skip items with no price adjustment needed.
+		if ( $discount <= 0 && $logo_surcharge <= 0 ) {
 			continue;
 		}
 
@@ -224,7 +270,9 @@ function wsg_apply_bulk_discount( $cart ) {
 			? floatval( $cart_item['_wsg_base_price'] )
 			: floatval( $cart_item['data']->get_price() );
 
-		$cart_item['data']->set_price( max( 0, $base_price - $discount ) );
+		$final_price = max( 0, $base_price - $discount + $logo_surcharge );
+		$cart_item['data']->set_price( $final_price );
+		$cart_item['data']->set_regular_price( $final_price );
 	}
 }
 
@@ -259,8 +307,11 @@ function wsg_product_cart_item_data( $item_data, $cart_item ) {
 		}
 	}
 
-	$tiers    = get_post_meta( $pid, '_wsg_discount_tiers', true );
-	$tiers    = is_array( $tiers ) ? $tiers : array();
+	$tiers = get_post_meta( $pid, '_wsg_discount_tiers', true );
+	if ( is_string( $tiers ) ) {
+		$tiers = json_decode( $tiers, true );
+	}
+	$tiers = is_array( $tiers ) ? $tiers : array();
 	$discount = wsg_get_discount_for_qty( $tiers, $total_qty );
 	$discount = floatval( apply_filters( 'wsg_discount_amount', $discount, $pid, $total_qty ) );
 
@@ -269,6 +320,37 @@ function wsg_product_cart_item_data( $item_data, $cart_item ) {
 			'key'   => __( 'Bulk discount', 'wsg' ),
 			'value' => '-' . wp_kses_post( wc_price( $discount ) ) . ' ' . esc_html__( 'per item', 'wsg' ),
 		);
+	}
+
+	/* --- Logo info --- */
+	if ( ! empty( $cart_item['_wsg_logo_position'] ) && ! empty( $cart_item['_wsg_logo_method'] ) ) {
+		$position_labels = wsg_get_logo_position_labels();
+		$pos_label       = isset( $position_labels[ $cart_item['_wsg_logo_position'] ] )
+			? $position_labels[ $cart_item['_wsg_logo_position'] ]
+			: $cart_item['_wsg_logo_position'];
+		$method_label    = ( 'embroidery' === $cart_item['_wsg_logo_method'] )
+			? __( 'Embroidery', 'wsg' )
+			: __( 'Print', 'wsg' );
+
+		$logo_display = esc_html( $pos_label ) . ' &mdash; ' . esc_html( $method_label );
+
+		if ( ! empty( $cart_item['_wsg_logo_url'] ) ) {
+			$logo_display .= '<br><img src="' . esc_url( $cart_item['_wsg_logo_url'] ) . '" alt="'
+				. esc_attr__( 'Logo', 'wsg' ) . '" style="max-width:40px;max-height:40px;vertical-align:middle;margin-top:4px;">';
+		}
+
+		$item_data[] = array(
+			'key'   => __( 'Logo', 'wsg' ),
+			'value' => $logo_display,
+		);
+
+		$surcharge = isset( $cart_item['_wsg_logo_surcharge'] ) ? floatval( $cart_item['_wsg_logo_surcharge'] ) : 0;
+		if ( $surcharge > 0 ) {
+			$item_data[] = array(
+				'key'   => __( 'Logo surcharge', 'wsg' ),
+				'value' => '+' . wp_kses_post( wc_price( $surcharge ) ) . ' ' . esc_html__( 'per item', 'wsg' ),
+			);
+		}
 	}
 
 	return $item_data;

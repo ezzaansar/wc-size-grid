@@ -383,6 +383,341 @@
 }
 
 /* ==========================================================================
+   Logo Customization Section — Accordion
+   ========================================================================== */
+
+#wsg-root .wsg-logo-section {
+    margin: 0 0 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#wsg-root .wsg-logo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 14px 16px;
+    background: #fafafa;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+#wsg-root .wsg-logo-header:hover {
+    background: #f2f2f2;
+}
+
+#wsg-root .wsg-logo-header .wsg-section-title {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#wsg-root .wsg-logo-optional {
+    font-weight: 400;
+    font-size: 12px;
+    color: #888;
+    background: #eee;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+#wsg-root .wsg-logo-chevron {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+#wsg-root .wsg-logo-chevron::after {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #666;
+    border-bottom: 2px solid #666;
+    transform: rotate(45deg);
+    transition: transform 0.25s ease;
+    vertical-align: middle;
+}
+
+#wsg-root .wsg-logo-section--collapsed .wsg-logo-chevron::after {
+    transform: rotate(-45deg);
+}
+
+#wsg-root .wsg-logo-body {
+    padding: 16px;
+    border-top: 1px solid #e0e0e0;
+}
+
+#wsg-root .wsg-logo-section--collapsed .wsg-logo-body {
+    display: none;
+}
+
+/* ==========================================================================
+   Logo — Drag & Drop Upload Zone
+   ========================================================================== */
+
+#wsg-root .wsg-logo-dropzone {
+    border: 2px dashed #c3c4c7;
+    border-radius: 8px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    margin: 0 0 16px;
+}
+
+#wsg-root .wsg-logo-dropzone:hover,
+#wsg-root .wsg-logo-dropzone--dragover {
+    border-color: #333;
+    background: #f8f8f8;
+}
+
+#wsg-root .wsg-logo-drop-icon {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 10px;
+    opacity: 0.35;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/%3E%3Cpolyline points='17 8 12 3 7 8'/%3E%3Cline x1='12' y1='3' x2='12' y2='15'/%3E%3C/svg%3E") no-repeat center/contain;
+}
+
+#wsg-root .wsg-logo-drop-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+#wsg-root .wsg-logo-drop-hint {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+}
+
+/* Uploading state */
+#wsg-root .wsg-logo-dropzone--uploading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+@keyframes wsgSpin {
+    to { transform: rotate(360deg); }
+}
+
+#wsg-root .wsg-logo-spinner {
+    font-size: 13px;
+    color: #666;
+}
+
+#wsg-root .wsg-logo-spinner-dot {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ddd;
+    border-top-color: #333;
+    border-radius: 50%;
+    animation: wsgSpin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+/* ==========================================================================
+   Logo — Enhanced Preview Card
+   ========================================================================== */
+
+#wsg-root .wsg-logo-preview {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    background: #f8faf8;
+    border: 1px solid #c8e6c9;
+    border-radius: 8px;
+    margin: 0 0 16px;
+}
+
+#wsg-root .wsg-logo-preview-img {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    background: #fff;
+    flex-shrink: 0;
+}
+
+#wsg-root .wsg-logo-preview-status {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #2e7d32;
+    margin: 0 0 6px;
+}
+
+#wsg-root .wsg-logo-preview-actions {
+    display: flex;
+    gap: 10px;
+}
+
+#wsg-root .wsg-logo-change {
+    background: none;
+    border: 1px solid #ccc;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #333;
+    transition: border-color 0.15s ease;
+}
+
+#wsg-root .wsg-logo-change:hover {
+    border-color: #333;
+}
+
+#wsg-root .wsg-logo-remove {
+    background: none;
+    border: none;
+    color: #d63638;
+    cursor: pointer;
+    font-size: 12px;
+    text-decoration: underline;
+    padding: 4px 0;
+}
+
+#wsg-root .wsg-logo-remove:hover {
+    color: #a02020;
+}
+
+/* ==========================================================================
+   Logo — Options Panel
+   ========================================================================== */
+
+#wsg-root .wsg-logo-options {
+    margin: 0;
+}
+
+#wsg-root .wsg-logo-field {
+    margin: 0 0 16px;
+}
+
+#wsg-root .wsg-logo-field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: #333;
+}
+
+/* ==========================================================================
+   Logo — Position Pills
+   ========================================================================== */
+
+#wsg-root .wsg-logo-position-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#wsg-root .wsg-logo-pos-pill {
+    padding: 8px 18px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    transition: all 0.15s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    line-height: 1.4;
+}
+
+#wsg-root .wsg-logo-pos-pill:hover {
+    border-color: #333;
+}
+
+#wsg-root .wsg-logo-pos-pill--active {
+    background: #333;
+    border-color: #333;
+    color: #fff;
+}
+
+/* ==========================================================================
+   Logo — Method Cards
+   ========================================================================== */
+
+#wsg-root .wsg-logo-method-cards {
+    display: flex;
+    gap: 10px;
+}
+
+#wsg-root .wsg-logo-method-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 14px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: center;
+}
+
+#wsg-root .wsg-logo-method-card:hover {
+    border-color: #999;
+}
+
+#wsg-root .wsg-logo-method-card--active {
+    border-color: #333;
+    background: #fafafa;
+    box-shadow: 0 0 0 1px #333;
+}
+
+#wsg-root .wsg-method-icon {
+    display: block;
+    width: 28px;
+    height: 28px;
+    opacity: 0.5;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+#wsg-root .wsg-method-icon--print {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9V2h12v7'/%3E%3Cpath d='M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2'/%3E%3Crect x='6' y='14' width='12' height='8'/%3E%3C/svg%3E");
+}
+
+#wsg-root .wsg-method-icon--embroidery {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.5 2L4 18h7l-1.5 4L20 6h-7z'/%3E%3C/svg%3E");
+}
+
+#wsg-root .wsg-method-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+#wsg-root .wsg-method-price {
+    font-size: 12px;
+    color: #666;
+}
+
+/* Surcharge note */
+#wsg-root .wsg-logo-surcharge {
+    font-size: 13px;
+    color: #666;
+    font-style: italic;
+    margin: 8px 0 0;
+}
+
+/* ==========================================================================
    Responsive (max-width: 600px)
    ========================================================================== */
 
@@ -410,5 +745,27 @@
 
     #wsg-root .wsg-totals-price {
         font-size: 16px;
+    }
+
+    #wsg-root .wsg-logo-method-cards {
+        flex-direction: column;
+    }
+
+    #wsg-root .wsg-logo-position-pills {
+        gap: 6px;
+    }
+
+    #wsg-root .wsg-logo-pos-pill {
+        padding: 6px 14px;
+        font-size: 12px;
+    }
+
+    #wsg-root .wsg-logo-dropzone {
+        padding: 20px 12px;
+    }
+
+    #wsg-root .wsg-logo-preview-img {
+        width: 56px;
+        height: 56px;
     }
 }

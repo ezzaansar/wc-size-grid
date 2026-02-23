@@ -77,6 +77,7 @@ function wsg_bootstrap() {
 	require_once WSG_PLUGIN_DIR . 'includes/cart-product-mode.php';
 	require_once WSG_PLUGIN_DIR . 'includes/cart-bundle-mode.php';
 	require_once WSG_PLUGIN_DIR . 'includes/cart-shared.php';
+	require_once WSG_PLUGIN_DIR . 'includes/logo-upload.php';
 }
 
 /**

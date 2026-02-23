@@ -51,6 +51,9 @@ function wsg_save_order_item_meta( $item, $cart_item_key, $values, $order ) {
 
 		$item->add_meta_data( 'Sizes ordered', implode( ', ', $breakdown ) );
 
+		// Logo meta for bundle parent.
+		wsg_save_logo_order_meta( $item, $values );
+
 		return;
 	}
 
@@ -80,8 +83,11 @@ function wsg_save_order_item_meta( $item, $cart_item_key, $values, $order ) {
 			}
 		}
 
-		$tiers    = get_post_meta( $pid, '_wsg_discount_tiers', true );
-		$tiers    = is_array( $tiers ) ? $tiers : array();
+		$tiers = get_post_meta( $pid, '_wsg_discount_tiers', true );
+		if ( is_string( $tiers ) ) {
+			$tiers = json_decode( $tiers, true );
+		}
+		$tiers = is_array( $tiers ) ? $tiers : array();
 		$discount = wsg_get_discount_for_qty( $tiers, $total_qty );
 		$discount = floatval( apply_filters( 'wsg_discount_amount', $discount, $pid, $total_qty ) );
 
@@ -92,5 +98,35 @@ function wsg_save_order_item_meta( $item, $cart_item_key, $values, $order ) {
 				'-' . wc_price( $discount ) . ' ' . __( 'per item', 'wsg' )
 			);
 		}
+
+		// Logo meta for product mode items.
+		wsg_save_logo_order_meta( $item, $values );
 	}
+}
+
+/**
+ * Save logo customization metadata to an order line item.
+ *
+ * @param WC_Order_Item_Product $item   Order line item.
+ * @param array                 $values Cart item data.
+ */
+function wsg_save_logo_order_meta( $item, $values ) {
+	if ( empty( $values['_wsg_logo_attachment_id'] ) ) {
+		return;
+	}
+
+	$item->add_meta_data( '_wsg_logo_attachment_id', absint( $values['_wsg_logo_attachment_id'] ) );
+	$item->add_meta_data( '_wsg_logo_url', esc_url_raw( $values['_wsg_logo_url'] ?? '' ) );
+	$item->add_meta_data( '_wsg_logo_position', sanitize_text_field( $values['_wsg_logo_position'] ?? '' ) );
+	$item->add_meta_data( '_wsg_logo_method', sanitize_text_field( $values['_wsg_logo_method'] ?? '' ) );
+	$item->add_meta_data( '_wsg_logo_surcharge', floatval( $values['_wsg_logo_surcharge'] ?? 0 ) );
+
+	// Human-readable display.
+	$position_labels = wsg_get_logo_position_labels();
+	$pos_label       = $position_labels[ $values['_wsg_logo_position'] ] ?? $values['_wsg_logo_position'];
+	$method_label    = ( 'embroidery' === ( $values['_wsg_logo_method'] ?? '' ) )
+		? __( 'Embroidery', 'wsg' )
+		: __( 'Print', 'wsg' );
+
+	$item->add_meta_data( 'Logo', $pos_label . ' - ' . $method_label );
 }

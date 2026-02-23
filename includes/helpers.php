@@ -139,6 +139,91 @@ function wsg_get_color_hex( $term_name, $term_slug = '', $term_id = 0 ) {
  * @param int   $qty   Total quantity.
  * @return float Discount per item, or 0 if no tier matches.
  */
+/**
+ * Detect the logo position attribute taxonomy.
+ *
+ * Searches all registered WooCommerce product attributes for one whose
+ * slug or label contains both "logo" and "position". Returns the
+ * taxonomy name (e.g. 'pa_logo-position') or null.
+ *
+ * @return string|null Taxonomy name, or null if not found.
+ */
+function wsg_detect_logo_position_attribute() {
+	$taxonomies = wc_get_attribute_taxonomies();
+
+	foreach ( $taxonomies as $tax ) {
+		$slug_lc  = strtolower( $tax->attribute_name );
+		$label_lc = strtolower( $tax->attribute_label );
+
+		if (
+			( false !== strpos( $slug_lc, 'logo' ) && false !== strpos( $slug_lc, 'position' ) ) ||
+			( false !== strpos( $label_lc, 'logo' ) && false !== strpos( $label_lc, 'position' ) )
+		) {
+			return wc_attribute_taxonomy_name( $tax->attribute_name );
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Get logo position labels.
+ *
+ * If a WooCommerce attribute containing "logo" and "position" exists,
+ * its terms are used as positions. Otherwise falls back to a default list.
+ * Manage positions via Products → Attributes → "Logo Position".
+ *
+ * @return array Associative array of slug => label.
+ */
+function wsg_get_logo_position_labels() {
+	$taxonomy = wsg_detect_logo_position_attribute();
+
+	if ( $taxonomy ) {
+		$terms  = get_terms(
+			array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+			)
+		);
+
+		// Apply WooCommerce custom ordering if set.
+		if ( ! is_wp_error( $terms ) && function_exists( 'wc_get_attribute' ) ) {
+			usort(
+				$terms,
+				function ( $a, $b ) {
+					$a_order = (int) get_term_meta( $a->term_id, 'order', true );
+					$b_order = (int) get_term_meta( $b->term_id, 'order', true );
+					return $a_order - $b_order;
+				}
+			);
+		}
+		$labels = array();
+
+		if ( ! is_wp_error( $terms ) ) {
+			foreach ( $terms as $term ) {
+				$labels[ $term->slug ] = $term->name;
+			}
+		}
+
+		if ( ! empty( $labels ) ) {
+			return apply_filters( 'wsg_logo_position_labels', $labels );
+		}
+	}
+
+	// Fallback: hardcoded defaults.
+	return apply_filters(
+		'wsg_logo_position_labels',
+		array(
+			'left-chest'   => __( 'Left Chest', 'wsg' ),
+			'right-chest'  => __( 'Right Chest', 'wsg' ),
+			'left-arm'     => __( 'Left Arm', 'wsg' ),
+			'right-arm'    => __( 'Right Arm', 'wsg' ),
+			'back'         => __( 'Back', 'wsg' ),
+			'front-center' => __( 'Front Centre', 'wsg' ),
+		)
+	);
+}
+
 function wsg_get_discount_for_qty( $tiers, $qty ) {
 	if ( empty( $tiers ) || $qty <= 0 ) {
 		return 0;
