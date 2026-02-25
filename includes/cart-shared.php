@@ -111,22 +111,41 @@ function wsg_save_order_item_meta( $item, $cart_item_key, $values, $order ) {
  * @param array                 $values Cart item data.
  */
 function wsg_save_logo_order_meta( $item, $values ) {
-	if ( empty( $values['_wsg_logo_attachment_id'] ) ) {
+	// Determine positions — support both new array and legacy single-position string.
+	$logo_positions = array();
+	if ( ! empty( $values['_wsg_logo_positions'] ) && is_array( $values['_wsg_logo_positions'] ) ) {
+		$logo_positions = $values['_wsg_logo_positions'];
+	} elseif ( ! empty( $values['_wsg_logo_position'] ) ) {
+		$logo_positions = array( $values['_wsg_logo_position'] );
+	}
+
+	if ( empty( $logo_positions ) && empty( $values['_wsg_logo_attachment_id'] ) ) {
 		return;
 	}
 
-	$item->add_meta_data( '_wsg_logo_attachment_id', absint( $values['_wsg_logo_attachment_id'] ) );
-	$item->add_meta_data( '_wsg_logo_url', esc_url_raw( $values['_wsg_logo_url'] ?? '' ) );
-	$item->add_meta_data( '_wsg_logo_position', sanitize_text_field( $values['_wsg_logo_position'] ?? '' ) );
+	if ( ! empty( $values['_wsg_logo_attachment_id'] ) ) {
+		$item->add_meta_data( '_wsg_logo_attachment_id', absint( $values['_wsg_logo_attachment_id'] ) );
+		$item->add_meta_data( '_wsg_logo_url', esc_url_raw( $values['_wsg_logo_url'] ?? '' ) );
+	}
+
+	$item->add_meta_data( '_wsg_logo_positions', wp_json_encode( $logo_positions ) );
 	$item->add_meta_data( '_wsg_logo_method', sanitize_text_field( $values['_wsg_logo_method'] ?? '' ) );
 	$item->add_meta_data( '_wsg_logo_surcharge', floatval( $values['_wsg_logo_surcharge'] ?? 0 ) );
 
-	// Human-readable display.
+	if ( ! empty( $values['_wsg_logo_notes'] ) ) {
+		$item->add_meta_data( '_wsg_logo_notes', sanitize_textarea_field( $values['_wsg_logo_notes'] ) );
+		$item->add_meta_data( 'Logo notes', sanitize_textarea_field( $values['_wsg_logo_notes'] ) );
+	}
+
+	// Human-readable position + method display.
 	$position_labels = wsg_get_logo_position_labels();
-	$pos_label       = $position_labels[ $values['_wsg_logo_position'] ] ?? $values['_wsg_logo_position'];
-	$method_label    = ( 'embroidery' === ( $values['_wsg_logo_method'] ?? '' ) )
+	$pos_label_parts = array();
+	foreach ( $logo_positions as $logo_pos ) {
+		$pos_label_parts[] = isset( $position_labels[ $logo_pos ] ) ? $position_labels[ $logo_pos ] : $logo_pos;
+	}
+	$method_label = ( 'embroidery' === ( $values['_wsg_logo_method'] ?? '' ) )
 		? __( 'Embroidery', 'wsg' )
 		: __( 'Print', 'wsg' );
 
-	$item->add_meta_data( 'Logo', $pos_label . ' - ' . $method_label );
+	$item->add_meta_data( 'Logo', implode( ', ', $pos_label_parts ) . ' - ' . $method_label );
 }

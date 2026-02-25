@@ -39,8 +39,10 @@
 		logo: {
 			attachmentId: null,
 			url:          null,
-			position:     null,
-			method:       'print'
+			positions:    [],     // array of position slugs (multi-select)
+			method:       'print',
+			notes:        '',
+			noLogo:       false
 		}
 	};
 
@@ -133,7 +135,7 @@
 	}
 
 	/* ───────────────────────────────────────────
-	 * Render: Logo Customization Section
+	 * Render: Logo Customization Section (3-step wizard)
 	 * ─────────────────────────────────────────── */
 
 	function renderLogoSection() {
@@ -155,8 +157,103 @@
 		// Collapsible body.
 		var $body = $('<div class="wsg-logo-body">');
 
+		// Step indicator.
+		var $steps = $('<div class="wsg-wizard-steps">');
+		var stepLabels = [
+			wsgData.i18n.stepPosition,
+			wsgData.i18n.stepMethod,
+			wsgData.i18n.stepLogo
+		];
+		for (var si = 0; si < 3; si++) {
+			if (si > 0) {
+				$steps.append($('<div class="wsg-wizard-step-line">'));
+			}
+			var $step = $('<div class="wsg-wizard-step">').attr('data-step', si + 1);
+			$step.append($('<span class="wsg-wizard-step-num">').text(si + 1));
+			$step.append($('<span class="wsg-wizard-step-label">').text(stepLabels[si]));
+			if (si === 0) {
+				$step.addClass('wsg-wizard-step--active');
+			}
+			$steps.append($step);
+		}
+		$body.append($steps);
+
+		// ── Step 1: Position selection ──────────────────────
+		var $pane1 = $('<div class="wsg-wizard-pane" data-pane="1">');
+		$pane1.append($('<p class="wsg-wizard-subtitle">').text(wsgData.i18n.selectPositions));
+
+		var printPrice = parseFloat(wsgData.logoPrintPrice) || 0;
+		var embPrice   = parseFloat(wsgData.logoEmbroideryPrice) || 0;
+
+		var $posGrid = $('<div class="wsg-logo-position-grid">');
+		$.each(wsgData.logoPositions, function(i, pos) {
+			var $card = $('<button type="button" class="wsg-logo-pos-card">').attr('data-position', pos.slug);
+
+			var $tshirt = $('<div class="wsg-pos-tshirt">');
+			var dotClass = 'wsg-pos-dot--' + pos.slug.replace(/_/g, '-');
+			$tshirt.append($('<span>').addClass('wsg-pos-dot ' + dotClass));
+			$card.append($tshirt);
+
+			$card.append($('<span class="wsg-pos-name">').text(pos.label));
+
+			var $badges = $('<div class="wsg-pos-badges">');
+			$badges.append($('<span class="wsg-pos-badge wsg-pos-badge--print">').text(wsgData.i18n.printAvailable));
+			$badges.append($('<span class="wsg-pos-badge wsg-pos-badge--emb">').text(wsgData.i18n.embAvailable));
+			$card.append($badges);
+
+			$card.append($('<span class="wsg-pos-check" aria-hidden="true">').html('&#10003;'));
+
+			$posGrid.append($card);
+		});
+		$pane1.append($posGrid);
+
+		var $nav1 = $('<div class="wsg-wizard-nav">');
+		$nav1.append(
+			$('<button type="button" class="wsg-wizard-continue">').text(wsgData.i18n.continue).prop('disabled', true)
+		);
+		$pane1.append($nav1);
+		$body.append($pane1);
+
+		// ── Step 2: Method selection ────────────────────────
+		var $pane2 = $('<div class="wsg-wizard-pane" data-pane="2">').css('display', 'none');
+
+		var $methods = $('<div class="wsg-logo-method-cards">');
+
+		var $printCard = $('<button type="button" class="wsg-logo-method-card wsg-logo-method-card--active">')
+			.attr('data-method', 'print');
+		$printCard.append($('<span class="wsg-method-icon wsg-method-icon--print">'));
+		$printCard.append($('<span class="wsg-method-name">').text(wsgData.i18n.print));
+		$printCard.append($('<span class="wsg-method-desc">').text(wsgData.i18n.printDesc));
+		if (printPrice > 0) {
+			$printCard.append(
+				$('<span class="wsg-method-price">').text('+' + wsgFormatPrice(printPrice) + ' ' + wsgData.i18n.perItem)
+			);
+		}
+		$methods.append($printCard);
+
+		var $embCard = $('<button type="button" class="wsg-logo-method-card">').attr('data-method', 'embroidery');
+		$embCard.append($('<span class="wsg-method-icon wsg-method-icon--embroidery">'));
+		$embCard.append($('<span class="wsg-method-name">').text(wsgData.i18n.embroidery));
+		$embCard.append($('<span class="wsg-method-desc">').text(wsgData.i18n.embroideryDesc));
+		if (embPrice > 0) {
+			$embCard.append(
+				$('<span class="wsg-method-price">').text('+' + wsgFormatPrice(embPrice) + ' ' + wsgData.i18n.perItem)
+			);
+		}
+		$methods.append($embCard);
+		$pane2.append($methods);
+
+		var $nav2 = $('<div class="wsg-wizard-nav">');
+		$nav2.append($('<button type="button" class="wsg-wizard-back">').text(wsgData.i18n.back));
+		$nav2.append($('<button type="button" class="wsg-wizard-continue">').text(wsgData.i18n.continue));
+		$pane2.append($nav2);
+		$body.append($pane2);
+
+		// ── Step 3: Logo upload ─────────────────────────────
+		var $pane3 = $('<div class="wsg-wizard-pane" data-pane="3">').css('display', 'none');
+
 		// Hidden file input.
-		$body.append(
+		$pane3.append(
 			$('<input type="file" class="wsg-logo-file-input" accept="image/*">').css('display', 'none')
 		);
 
@@ -165,18 +262,15 @@
 		$dropzone.append($('<div class="wsg-logo-drop-icon">'));
 		$dropzone.append($('<div class="wsg-logo-drop-text">').text(wsgData.i18n.uploadLogo));
 		$dropzone.append($('<div class="wsg-logo-drop-hint">').text(wsgData.i18n.dragDrop));
-		// Spinner (hidden).
 		var $spinner = $('<div class="wsg-logo-spinner">').css('display', 'none');
 		$spinner.append($('<span class="wsg-logo-spinner-dot">'));
 		$spinner.append(document.createTextNode(' ' + wsgData.i18n.uploading));
 		$dropzone.append($spinner);
-		$body.append($dropzone);
+		$pane3.append($dropzone);
 
 		// Preview card (hidden initially).
 		var $preview = $('<div class="wsg-logo-preview">').css('display', 'none');
-		$preview.append(
-			$('<img class="wsg-logo-preview-img">').attr('alt', 'Logo')
-		);
+		$preview.append($('<img class="wsg-logo-preview-img">').attr('alt', 'Logo'));
 		var $previewInfo = $('<div class="wsg-logo-preview-info">');
 		$previewInfo.append(
 			$('<span class="wsg-logo-preview-status">').text(wsgData.i18n.logoUploaded)
@@ -190,60 +284,32 @@
 		);
 		$previewInfo.append($previewActions);
 		$preview.append($previewInfo);
-		$body.append($preview);
+		$pane3.append($preview);
 
-		// Options panel (hidden until logo uploaded).
-		var $options = $('<div class="wsg-logo-options">').css('display', 'none');
+		// "No logo" checkbox.
+		var $noLogoLabel = $('<label class="wsg-logo-no-logo">');
+		$noLogoLabel.append($('<input type="checkbox" class="wsg-logo-no-logo-input">'));
+		$noLogoLabel.append(document.createTextNode(' ' + wsgData.i18n.noLogoOption));
+		$pane3.append($noLogoLabel);
 
-		// Position pills.
-		var $posGroup = $('<div class="wsg-logo-field">');
-		$posGroup.append($('<label class="wsg-logo-field-label">').text(wsgData.i18n.position));
-		var $posPills = $('<div class="wsg-logo-position-pills">');
-		$.each(wsgData.logoPositions, function(i, pos) {
-			$posPills.append(
-				$('<button type="button" class="wsg-logo-pos-pill">')
-					.attr('data-position', pos.slug)
-					.text(pos.label)
-			);
-		});
-		$posGroup.append($posPills);
-		$options.append($posGroup);
-
-		// Method cards.
-		var printPrice = parseFloat(wsgData.logoPrintPrice) || 0;
-		var embPrice   = parseFloat(wsgData.logoEmbroideryPrice) || 0;
-
-		var $methodGroup = $('<div class="wsg-logo-field">');
-		$methodGroup.append($('<label class="wsg-logo-field-label">').text(wsgData.i18n.method));
-		var $methods = $('<div class="wsg-logo-method-cards">');
-
-		var $printCard = $('<button type="button" class="wsg-logo-method-card wsg-logo-method-card--active">')
-			.attr('data-method', 'print');
-		$printCard.append($('<span class="wsg-method-icon wsg-method-icon--print">'));
-		$printCard.append($('<span class="wsg-method-name">').text(wsgData.i18n.print));
-		if (printPrice > 0) {
-			$printCard.append($('<span class="wsg-method-price">').text('+' + wsgFormatPrice(printPrice)));
-		}
-		$methods.append($printCard);
-
-		var $embCard = $('<button type="button" class="wsg-logo-method-card">')
-			.attr('data-method', 'embroidery');
-		$embCard.append($('<span class="wsg-method-icon wsg-method-icon--embroidery">'));
-		$embCard.append($('<span class="wsg-method-name">').text(wsgData.i18n.embroidery));
-		if (embPrice > 0) {
-			$embCard.append($('<span class="wsg-method-price">').text('+' + wsgFormatPrice(embPrice)));
-		}
-		$methods.append($embCard);
-
-		$methodGroup.append($methods);
-		$options.append($methodGroup);
+		// Notes textarea.
+		var $notesWrap = $('<div class="wsg-logo-notes-wrap">');
+		$notesWrap.append($('<label class="wsg-logo-field-label">').text(wsgData.i18n.addNotes));
+		$notesWrap.append(
+			$('<textarea class="wsg-logo-notes" rows="2">').attr('placeholder', wsgData.i18n.notesPlaceholder)
+		);
+		$pane3.append($notesWrap);
 
 		// Surcharge note.
-		$options.append($('<div class="wsg-logo-surcharge">'));
+		$pane3.append($('<div class="wsg-logo-surcharge">'));
 
-		$body.append($options);
+		var $nav3 = $('<div class="wsg-wizard-nav">');
+		$nav3.append($('<button type="button" class="wsg-wizard-back">').text(wsgData.i18n.back));
+		$nav3.append($('<button type="button" class="wsg-wizard-finish">').text(wsgData.i18n.finish));
+		$pane3.append($nav3);
+		$body.append($pane3);
+
 		$section.append($body);
-
 		return $section;
 	}
 
@@ -252,7 +318,7 @@
 	 * ─────────────────────────────────────────── */
 
 	function getLogoSurcharge() {
-		if (!wsgData.logoEnabled || !state.logo.attachmentId) {
+		if (!wsgData.logoEnabled || state.logo.positions.length === 0) {
 			return 0;
 		}
 		if (state.logo.method === 'embroidery') {
@@ -406,7 +472,8 @@
 
 		// Logo surcharge.
 		var logoSurcharge    = getLogoSurcharge();
-		var logoIncomplete   = state.logo.attachmentId && !state.logo.position;
+		// logoIncomplete: positions selected but neither a logo uploaded nor "no logo" ticked.
+		var logoIncomplete   = state.logo.positions.length > 0 && !state.logo.attachmentId && !state.logo.noLogo;
 
 		if (wsgData.mode === 'product') {
 			// --- Product mode ---
@@ -773,7 +840,6 @@
 					$dropzone.hide();
 					$('.wsg-logo-preview-img').attr('src', response.data.thumbnail || response.data.url);
 					$('.wsg-logo-preview').show();
-					$('.wsg-logo-options').show();
 
 					// Auto-expand if collapsed.
 					$('.wsg-logo-section').removeClass('wsg-logo-section--collapsed');
@@ -807,7 +873,7 @@
 	}
 
 	/* ───────────────────────────────────────────
-	 * Event: Logo remove
+	 * Event: Logo remove (step 3 — keep positions/method, reset upload)
 	 * ─────────────────────────────────────────── */
 
 	function handleLogoRemove(e) {
@@ -815,36 +881,37 @@
 
 		state.logo.attachmentId = null;
 		state.logo.url          = null;
-		state.logo.position     = null;
-		state.logo.method       = 'print';
+		state.logo.noLogo       = false;
 
-		// Reset UI: show dropzone, hide preview and options.
+		// Show dropzone, hide preview.
 		$('.wsg-logo-preview').hide();
-		$('.wsg-logo-options').hide();
 		$('.wsg-logo-dropzone').show();
-
-		// Reset position pills.
-		$('.wsg-logo-pos-pill').removeClass('wsg-logo-pos-pill--active');
-
-		// Reset method cards to Print.
-		$('.wsg-logo-method-card').removeClass('wsg-logo-method-card--active');
-		$('.wsg-logo-method-card[data-method="print"]').addClass('wsg-logo-method-card--active');
+		$('.wsg-logo-no-logo-input').prop('checked', false);
 
 		updateTotals();
 	}
 
 	/* ───────────────────────────────────────────
-	 * Event: Logo position pill click
+	 * Event: Logo position card click (multi-select)
 	 * ─────────────────────────────────────────── */
 
-	function handleLogoPositionPill(e) {
+	function handleLogoPositionCard(e) {
 		e.preventDefault();
-		var $pill = $(this);
+		var $card = $(this);
+		$card.toggleClass('wsg-logo-pos-card--active');
 
-		$('.wsg-logo-pos-pill').removeClass('wsg-logo-pos-pill--active');
-		$pill.addClass('wsg-logo-pos-pill--active');
+		var pos = $card.data('position');
+		var idx = state.logo.positions.indexOf(pos);
+		if (idx === -1) {
+			state.logo.positions.push(pos);
+		} else {
+			state.logo.positions.splice(idx, 1);
+		}
 
-		state.logo.position = $pill.data('position');
+		// Enable Continue on step 1 only when at least one position selected.
+		$('.wsg-wizard-pane[data-pane="1"] .wsg-wizard-continue')
+			.prop('disabled', state.logo.positions.length === 0);
+
 		updateTotals();
 	}
 
@@ -861,6 +928,84 @@
 
 		state.logo.method = $card.data('method');
 		updateTotals();
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Wizard Continue button
+	 * ─────────────────────────────────────────── */
+
+	function handleWizardContinue(e) {
+		e.preventDefault();
+		var $pane     = $(this).closest('.wsg-wizard-pane');
+		var currStep  = parseInt($pane.data('pane'), 10);
+		var nextStep  = currStep + 1;
+
+		$pane.hide();
+		$('.wsg-wizard-pane[data-pane="' + nextStep + '"]').show();
+
+		$('.wsg-wizard-step').removeClass('wsg-wizard-step--active wsg-wizard-step--done');
+		for (var sd = 1; sd < nextStep; sd++) {
+			$('.wsg-wizard-step[data-step="' + sd + '"]').addClass('wsg-wizard-step--done');
+		}
+		$('.wsg-wizard-step[data-step="' + nextStep + '"]').addClass('wsg-wizard-step--active');
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Wizard Back button
+	 * ─────────────────────────────────────────── */
+
+	function handleWizardBack(e) {
+		e.preventDefault();
+		var $pane    = $(this).closest('.wsg-wizard-pane');
+		var currStep = parseInt($pane.data('pane'), 10);
+		var prevStep = currStep - 1;
+
+		$pane.hide();
+		$('.wsg-wizard-pane[data-pane="' + prevStep + '"]').show();
+
+		$('.wsg-wizard-step').removeClass('wsg-wizard-step--active wsg-wizard-step--done');
+		for (var sb = 1; sb < prevStep; sb++) {
+			$('.wsg-wizard-step[data-step="' + sb + '"]').addClass('wsg-wizard-step--done');
+		}
+		$('.wsg-wizard-step[data-step="' + prevStep + '"]').addClass('wsg-wizard-step--active');
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Wizard Finish button
+	 * ─────────────────────────────────────────── */
+
+	function handleWizardFinish(e) {
+		e.preventDefault();
+		// Collapse the accordion to signal completion.
+		$('.wsg-logo-section').addClass('wsg-logo-section--collapsed');
+		updateTotals();
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: No-logo checkbox toggle
+	 * ─────────────────────────────────────────── */
+
+	function handleNoLogoToggle() {
+		state.logo.noLogo = $(this).is(':checked');
+		if (state.logo.noLogo) {
+			$('.wsg-logo-dropzone').hide();
+			$('.wsg-logo-preview').hide();
+		} else {
+			if (!state.logo.attachmentId) {
+				$('.wsg-logo-dropzone').show();
+			} else {
+				$('.wsg-logo-preview').show();
+			}
+		}
+		updateTotals();
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Notes textarea input
+	 * ─────────────────────────────────────────── */
+
+	function handleNotesChange() {
+		state.logo.notes = $(this).val();
 	}
 
 	/* ───────────────────────────────────────────
@@ -931,11 +1076,16 @@
 			items:      JSON.stringify(items)
 		};
 
-		// Append logo data if present.
-		if (state.logo.attachmentId && state.logo.position && state.logo.method) {
-			ajaxData.logo_attachment_id = state.logo.attachmentId;
-			ajaxData.logo_position      = state.logo.position;
-			ajaxData.logo_method        = state.logo.method;
+		// Append logo data if positions are selected.
+		if (state.logo.positions.length > 0 && state.logo.method) {
+			ajaxData.logo_positions = JSON.stringify(state.logo.positions);
+			ajaxData.logo_method    = state.logo.method;
+			if (state.logo.attachmentId) {
+				ajaxData.logo_attachment_id = state.logo.attachmentId;
+			}
+			if (state.logo.notes) {
+				ajaxData.logo_notes = state.logo.notes;
+			}
 		}
 
 		$.ajax({
@@ -970,11 +1120,25 @@
 
 					// Reset logo state.
 					if (wsgData.logoEnabled) {
-						state.logo = { attachmentId: null, url: null, position: null, method: 'print' };
+						state.logo = {
+							attachmentId: null,
+							url:          null,
+							positions:    [],
+							method:       'print',
+							notes:        '',
+							noLogo:       false
+						};
+						// Reset wizard to step 1.
+						$('.wsg-wizard-pane').hide();
+						$('.wsg-wizard-pane[data-pane="1"]').show();
+						$('.wsg-wizard-step').removeClass('wsg-wizard-step--active wsg-wizard-step--done');
+						$('.wsg-wizard-step[data-step="1"]').addClass('wsg-wizard-step--active');
+						$('.wsg-logo-pos-card').removeClass('wsg-logo-pos-card--active');
+						$('.wsg-wizard-pane[data-pane="1"] .wsg-wizard-continue').prop('disabled', true);
 						$('.wsg-logo-preview').hide();
-						$('.wsg-logo-options').hide();
 						$('.wsg-logo-dropzone').show();
-						$('.wsg-logo-pos-pill').removeClass('wsg-logo-pos-pill--active');
+						$('.wsg-logo-no-logo-input').prop('checked', false);
+						$('.wsg-logo-notes').val('');
 						$('.wsg-logo-method-card').removeClass('wsg-logo-method-card--active');
 						$('.wsg-logo-method-card[data-method="print"]').addClass('wsg-logo-method-card--active');
 					}
@@ -1046,8 +1210,14 @@
 		$root.on('change', '.wsg-logo-file-input', handleLogoFileChange);
 		$root.on('click', '.wsg-logo-change', handleLogoChangeClick);
 		$root.on('click', '.wsg-logo-remove', handleLogoRemove);
-		$root.on('click', '.wsg-logo-pos-pill', handleLogoPositionPill);
+		// Wizard controls.
+		$root.on('click', '.wsg-logo-pos-card', handleLogoPositionCard);
 		$root.on('click', '.wsg-logo-method-card', handleLogoMethodCard);
+		$root.on('click', '.wsg-wizard-continue', handleWizardContinue);
+		$root.on('click', '.wsg-wizard-back', handleWizardBack);
+		$root.on('click', '.wsg-wizard-finish', handleWizardFinish);
+		$root.on('change', '.wsg-logo-no-logo-input', handleNoLogoToggle);
+		$root.on('input', '.wsg-logo-notes', handleNotesChange);
 
 		// Auto-select first colour in product mode.
 		if (wsgData.mode === 'product' && colorKeys.length > 0 && colorKeys[0] !== 'default') {

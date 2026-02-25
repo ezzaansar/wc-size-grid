@@ -56,20 +56,26 @@ function wsg_bundle_add_to_cart_handler() {
 	}
 
 	/* --- Logo customization --- */
-	$logo_attachment_id = isset( $_POST['logo_attachment_id'] ) ? absint( $_POST['logo_attachment_id'] ) : 0;
-	$logo_position      = isset( $_POST['logo_position'] ) ? sanitize_text_field( wp_unslash( $_POST['logo_position'] ) ) : '';
-	$logo_method        = isset( $_POST['logo_method'] ) ? sanitize_text_field( wp_unslash( $_POST['logo_method'] ) ) : '';
-	$has_logo           = false;
-	$logo_surcharge     = 0;
+	$logo_attachment_id  = isset( $_POST['logo_attachment_id'] ) ? absint( $_POST['logo_attachment_id'] ) : 0;
+	$logo_positions_json = isset( $_POST['logo_positions'] ) ? wp_unslash( $_POST['logo_positions'] ) : '[]';
+	$logo_positions      = json_decode( $logo_positions_json, true );
+	$logo_positions      = is_array( $logo_positions ) ? array_map( 'sanitize_text_field', $logo_positions ) : array();
+	$logo_method         = isset( $_POST['logo_method'] ) ? sanitize_text_field( wp_unslash( $_POST['logo_method'] ) ) : '';
+	$logo_notes          = isset( $_POST['logo_notes'] ) ? sanitize_textarea_field( wp_unslash( $_POST['logo_notes'] ) ) : '';
+	$has_logo            = false;
+	$logo_surcharge      = 0;
 
-	if ( $logo_attachment_id && $logo_position && $logo_method ) {
-		if ( ! wp_attachment_is_image( $logo_attachment_id ) ) {
+	if ( ! empty( $logo_positions ) && $logo_method ) {
+		if ( $logo_attachment_id && ! wp_attachment_is_image( $logo_attachment_id ) ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid logo file.', 'wsg' ) ) );
 		}
 
 		$allowed_positions = get_post_meta( $product_id, '_wsg_logo_positions', true );
-		if ( ! is_array( $allowed_positions ) || ! in_array( $logo_position, $allowed_positions, true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid logo position.', 'wsg' ) ) );
+		$allowed_positions = is_array( $allowed_positions ) ? $allowed_positions : array();
+		foreach ( $logo_positions as $logo_pos ) {
+			if ( ! in_array( $logo_pos, $allowed_positions, true ) ) {
+				wp_send_json_error( array( 'message' => __( 'Invalid logo position.', 'wsg' ) ) );
+			}
 		}
 
 		if ( ! in_array( $logo_method, array( 'print', 'embroidery' ), true ) ) {
@@ -125,11 +131,16 @@ function wsg_bundle_add_to_cart_handler() {
 		);
 
 		if ( $has_logo ) {
-			$cart_item_data['_wsg_logo_attachment_id'] = $logo_attachment_id;
-			$cart_item_data['_wsg_logo_url']           = wp_get_attachment_url( $logo_attachment_id );
-			$cart_item_data['_wsg_logo_position']      = $logo_position;
-			$cart_item_data['_wsg_logo_method']         = $logo_method;
-			$cart_item_data['_wsg_logo_surcharge']     = $logo_surcharge;
+			if ( $logo_attachment_id ) {
+				$cart_item_data['_wsg_logo_attachment_id'] = $logo_attachment_id;
+				$cart_item_data['_wsg_logo_url']           = wp_get_attachment_url( $logo_attachment_id );
+			}
+			$cart_item_data['_wsg_logo_positions'] = $logo_positions;
+			$cart_item_data['_wsg_logo_method']    = $logo_method;
+			$cart_item_data['_wsg_logo_surcharge'] = $logo_surcharge;
+			if ( $logo_notes ) {
+				$cart_item_data['_wsg_logo_notes'] = $logo_notes;
+			}
 		}
 
 		/**

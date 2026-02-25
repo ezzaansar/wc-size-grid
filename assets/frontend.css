@@ -457,7 +457,306 @@
 }
 
 /* ==========================================================================
-   Logo — Drag & Drop Upload Zone
+   Logo Wizard — Step Indicator
+   ========================================================================== */
+
+#wsg-root .wsg-wizard-steps {
+    display: flex;
+    align-items: flex-start;
+    margin: 0 0 20px;
+}
+
+#wsg-root .wsg-wizard-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+}
+
+#wsg-root .wsg-wizard-step-line {
+    flex: 1;
+    height: 2px;
+    background: #e0e0e0;
+    margin-top: 13px;
+    min-width: 16px;
+    transition: background 0.2s ease;
+}
+
+#wsg-root .wsg-wizard-step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #bbb;
+    background: #fff;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+#wsg-root .wsg-wizard-step-label {
+    font-size: 10px;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+#wsg-root .wsg-wizard-step--active .wsg-wizard-step-num {
+    border-color: #333;
+    background: #333;
+    color: #fff;
+}
+
+#wsg-root .wsg-wizard-step--active .wsg-wizard-step-label {
+    color: #333;
+    font-weight: 700;
+}
+
+#wsg-root .wsg-wizard-step--done .wsg-wizard-step-num {
+    border-color: #2e7d32;
+    background: #2e7d32;
+    color: #fff;
+}
+
+#wsg-root .wsg-wizard-step--done .wsg-wizard-step-label {
+    color: #2e7d32;
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   Logo Wizard — Pane & Subtitle
+   ========================================================================== */
+
+#wsg-root .wsg-wizard-pane {
+    animation: wsgFadeIn 0.2s ease;
+}
+
+#wsg-root .wsg-wizard-subtitle {
+    font-size: 13px;
+    color: #666;
+    margin: 0 0 14px;
+}
+
+/* ==========================================================================
+   Logo Wizard — Position Cards Grid
+   ========================================================================== */
+
+#wsg-root .wsg-logo-position-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 0 0 4px;
+}
+
+#wsg-root .wsg-logo-pos-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 14px 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    position: relative;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+#wsg-root .wsg-logo-pos-card:hover {
+    border-color: #aaa;
+    background: #fafafa;
+}
+
+#wsg-root .wsg-logo-pos-card--active {
+    border-color: #333;
+    background: #f8f8f8;
+}
+
+/* T-shirt visual */
+#wsg-root .wsg-pos-tshirt {
+    width: 64px;
+    height: 64px;
+    position: relative;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M35%2C10 Q50%2C20 65%2C10 L88%2C24 L82%2C46 L68%2C38 L68%2C92 L32%2C92 L32%2C38 L18%2C46 L12%2C24 Z' fill='%23f5f5f5' stroke='%23ccc' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center/contain;
+    flex-shrink: 0;
+}
+
+#wsg-root .wsg-pos-dot {
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #2271b1;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    transform: translate(-50%, -50%);
+    transition: background 0.15s ease;
+    /* Default: center-chest fallback */
+    top: 42%;
+    left: 50%;
+}
+
+#wsg-root .wsg-logo-pos-card--active .wsg-pos-dot {
+    background: #222;
+}
+
+/* Position-specific dot coordinates */
+#wsg-root .wsg-pos-dot--left-chest    { top: 42%; left: 36%; }
+#wsg-root .wsg-pos-dot--right-chest   { top: 42%; left: 64%; }
+#wsg-root .wsg-pos-dot--center-chest  { top: 42%; left: 50%; }
+#wsg-root .wsg-pos-dot--left-sleeve   { top: 40%; left: 16%; }
+#wsg-root .wsg-pos-dot--right-sleeve  { top: 40%; left: 84%; }
+#wsg-root .wsg-pos-dot--back          { top: 42%; left: 50%; }
+#wsg-root .wsg-pos-dot--front-pocket  { top: 46%; left: 36%; }
+#wsg-root .wsg-pos-dot--centre-chest  { top: 42%; left: 50%; }
+
+/* Position name */
+#wsg-root .wsg-pos-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.3;
+}
+
+/* Method availability badges */
+#wsg-root .wsg-pos-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    justify-content: center;
+}
+
+#wsg-root .wsg-pos-badge {
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 8px;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+#wsg-root .wsg-pos-badge--print {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+#wsg-root .wsg-pos-badge--emb {
+    background: #fce4ec;
+    color: #880e4f;
+}
+
+/* Selected checkmark */
+#wsg-root .wsg-pos-check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #333;
+    color: #fff;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+#wsg-root .wsg-logo-pos-card--active .wsg-pos-check {
+    opacity: 1;
+}
+
+/* ==========================================================================
+   Logo Wizard — Method Cards (Step 2)
+   ========================================================================== */
+
+#wsg-root .wsg-logo-method-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 0 0 4px;
+}
+
+#wsg-root .wsg-logo-method-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 20px 14px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: center;
+}
+
+#wsg-root .wsg-logo-method-card:hover {
+    border-color: #aaa;
+    background: #fafafa;
+}
+
+#wsg-root .wsg-logo-method-card--active {
+    border-color: #333;
+    background: #fafafa;
+    box-shadow: 0 0 0 1px #333;
+}
+
+#wsg-root .wsg-method-icon {
+    display: block;
+    width: 40px;
+    height: 40px;
+    opacity: 0.55;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    transition: opacity 0.15s ease;
+}
+
+#wsg-root .wsg-logo-method-card--active .wsg-method-icon {
+    opacity: 1;
+}
+
+#wsg-root .wsg-method-icon--print {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9V2h12v7'/%3E%3Cpath d='M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2'/%3E%3Crect x='6' y='14' width='12' height='8'/%3E%3C/svg%3E");
+}
+
+#wsg-root .wsg-method-icon--embroidery {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.5 2L4 18h7l-1.5 4L20 6h-7z'/%3E%3C/svg%3E");
+}
+
+#wsg-root .wsg-method-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+}
+
+#wsg-root .wsg-method-desc {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.4;
+}
+
+#wsg-root .wsg-method-price {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* ==========================================================================
+   Logo Wizard — Upload Step (Step 3)
    ========================================================================== */
 
 #wsg-root .wsg-logo-dropzone {
@@ -467,7 +766,7 @@
     text-align: center;
     cursor: pointer;
     transition: border-color 0.2s ease, background 0.2s ease;
-    margin: 0 0 16px;
+    margin: 0 0 12px;
 }
 
 #wsg-root .wsg-logo-dropzone:hover,
@@ -523,10 +822,7 @@
     margin-right: 6px;
 }
 
-/* ==========================================================================
-   Logo — Enhanced Preview Card
-   ========================================================================== */
-
+/* Preview card */
 #wsg-root .wsg-logo-preview {
     display: flex;
     align-items: center;
@@ -535,12 +831,12 @@
     background: #f8faf8;
     border: 1px solid #c8e6c9;
     border-radius: 8px;
-    margin: 0 0 16px;
+    margin: 0 0 12px;
 }
 
 #wsg-root .wsg-logo-preview-img {
-    width: 72px;
-    height: 72px;
+    width: 64px;
+    height: 64px;
     object-fit: contain;
     border-radius: 6px;
     border: 1px solid #e0e0e0;
@@ -590,123 +886,60 @@
     color: #a02020;
 }
 
-/* ==========================================================================
-   Logo — Options Panel
-   ========================================================================== */
-
-#wsg-root .wsg-logo-options {
-    margin: 0;
+/* "No logo" checkbox row */
+#wsg-root .wsg-logo-no-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #555;
+    cursor: pointer;
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border: 1px dashed #ddd;
+    border-radius: 6px;
+    transition: border-color 0.15s ease;
 }
 
-#wsg-root .wsg-logo-field {
-    margin: 0 0 16px;
+#wsg-root .wsg-logo-no-logo:hover {
+    border-color: #aaa;
+}
+
+#wsg-root .wsg-logo-no-logo-input {
+    width: auto;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+/* Notes */
+#wsg-root .wsg-logo-notes-wrap {
+    margin: 0 0 12px;
 }
 
 #wsg-root .wsg-logo-field-label {
     display: block;
     font-size: 13px;
     font-weight: 600;
-    margin: 0 0 8px;
+    margin: 0 0 6px;
     color: #333;
 }
 
-/* ==========================================================================
-   Logo — Position Pills
-   ========================================================================== */
-
-#wsg-root .wsg-logo-position-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-#wsg-root .wsg-logo-pos-pill {
-    padding: 8px 18px;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    background: #fff;
-    cursor: pointer;
+#wsg-root .wsg-logo-notes {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 8px 10px;
     font-size: 13px;
-    color: #333;
-    transition: all 0.15s ease;
-    -webkit-appearance: none;
-    appearance: none;
-    line-height: 1.4;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 56px;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
 }
 
-#wsg-root .wsg-logo-pos-pill:hover {
+#wsg-root .wsg-logo-notes:focus {
     border-color: #333;
-}
-
-#wsg-root .wsg-logo-pos-pill--active {
-    background: #333;
-    border-color: #333;
-    color: #fff;
-}
-
-/* ==========================================================================
-   Logo — Method Cards
-   ========================================================================== */
-
-#wsg-root .wsg-logo-method-cards {
-    display: flex;
-    gap: 10px;
-}
-
-#wsg-root .wsg-logo-method-card {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 14px 16px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    background: #fff;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    -webkit-appearance: none;
-    appearance: none;
-    text-align: center;
-}
-
-#wsg-root .wsg-logo-method-card:hover {
-    border-color: #999;
-}
-
-#wsg-root .wsg-logo-method-card--active {
-    border-color: #333;
-    background: #fafafa;
-    box-shadow: 0 0 0 1px #333;
-}
-
-#wsg-root .wsg-method-icon {
-    display: block;
-    width: 28px;
-    height: 28px;
-    opacity: 0.5;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-}
-
-#wsg-root .wsg-method-icon--print {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9V2h12v7'/%3E%3Cpath d='M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2'/%3E%3Crect x='6' y='14' width='12' height='8'/%3E%3C/svg%3E");
-}
-
-#wsg-root .wsg-method-icon--embroidery {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.5 2L4 18h7l-1.5 4L20 6h-7z'/%3E%3C/svg%3E");
-}
-
-#wsg-root .wsg-method-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-}
-
-#wsg-root .wsg-method-price {
-    font-size: 12px;
-    color: #666;
+    outline: none;
 }
 
 /* Surcharge note */
@@ -714,7 +947,63 @@
     font-size: 13px;
     color: #666;
     font-style: italic;
-    margin: 8px 0 0;
+    margin: 0 0 8px;
+}
+
+/* ==========================================================================
+   Logo Wizard — Navigation Buttons
+   ========================================================================== */
+
+#wsg-root .wsg-wizard-nav {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #f0f0f0;
+}
+
+#wsg-root .wsg-wizard-back {
+    padding: 9px 20px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    color: #555;
+    transition: all 0.15s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+#wsg-root .wsg-wizard-back:hover {
+    border-color: #999;
+    color: #333;
+}
+
+#wsg-root .wsg-wizard-continue,
+#wsg-root .wsg-wizard-finish {
+    padding: 9px 24px;
+    border: none;
+    border-radius: 6px;
+    background: #333;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.15s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+#wsg-root .wsg-wizard-continue:hover,
+#wsg-root .wsg-wizard-finish:hover {
+    background: #555;
+}
+
+#wsg-root .wsg-wizard-continue:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 /* ==========================================================================
@@ -748,16 +1037,11 @@
     }
 
     #wsg-root .wsg-logo-method-cards {
-        flex-direction: column;
+        grid-template-columns: 1fr;
     }
 
-    #wsg-root .wsg-logo-position-pills {
-        gap: 6px;
-    }
-
-    #wsg-root .wsg-logo-pos-pill {
-        padding: 6px 14px;
-        font-size: 12px;
+    #wsg-root .wsg-logo-position-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 
     #wsg-root .wsg-logo-dropzone {
@@ -765,7 +1049,11 @@
     }
 
     #wsg-root .wsg-logo-preview-img {
-        width: 56px;
-        height: 56px;
+        width: 52px;
+        height: 52px;
+    }
+
+    #wsg-root .wsg-wizard-nav {
+        flex-direction: row;
     }
 }
