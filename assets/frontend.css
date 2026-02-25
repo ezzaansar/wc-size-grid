@@ -383,36 +383,40 @@
 }
 
 /* ==========================================================================
-   Logo Customization Section — Accordion
+   Logo Customization — Trigger Area & Summary Card
    ========================================================================== */
 
-#wsg-root .wsg-logo-section {
+#wsg-root .wsg-logo-wrap {
     margin: 0 0 20px;
-    border: 1px solid #e0e0e0;
+}
+
+#wsg-root .wsg-logo-open-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 13px 16px;
+    border: 2px dashed #ccc;
     border-radius: 8px;
-    overflow: hidden;
-}
-
-#wsg-root .wsg-logo-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    padding: 14px 16px;
     background: #fafafa;
-    user-select: none;
-    transition: background 0.15s ease;
+    cursor: pointer;
+    font-size: 14px;
+    color: #555;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
 
-#wsg-root .wsg-logo-header:hover {
-    background: #f2f2f2;
+#wsg-root .wsg-logo-open-btn:hover {
+    border-color: #2271b1;
+    background: #f0f7fc;
+    color: #2271b1;
 }
 
-#wsg-root .wsg-logo-header .wsg-section-title {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+#wsg-root .wsg-logo-open-icon::before {
+    content: '+';
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 1;
 }
 
 #wsg-root .wsg-logo-optional {
@@ -424,36 +428,172 @@
     border-radius: 10px;
 }
 
-#wsg-root .wsg-logo-chevron {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
+#wsg-root .wsg-logo-summary-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid #c8e6c9;
+    border-radius: 8px;
+    background: #f8faf8;
+}
+
+#wsg-root .wsg-logo-summary-preview {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    background: #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+#wsg-root .wsg-logo-summary-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+#wsg-root .wsg-logo-summary-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+#wsg-root .wsg-logo-summary-positions {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#wsg-root .wsg-logo-summary-method {
+    font-size: 12px;
+    color: #666;
+}
+
+#wsg-root .wsg-logo-summary-actions {
+    display: flex;
+    gap: 8px;
     flex-shrink: 0;
 }
 
-#wsg-root .wsg-logo-chevron::after {
-    content: '';
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-right: 2px solid #666;
-    border-bottom: 2px solid #666;
-    transform: rotate(45deg);
-    transition: transform 0.25s ease;
-    vertical-align: middle;
+#wsg-root .wsg-logo-edit-btn,
+#wsg-root .wsg-logo-remove-all {
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid;
+    transition: background 0.15s;
+    line-height: 1.4;
 }
 
-#wsg-root .wsg-logo-section--collapsed .wsg-logo-chevron::after {
-    transform: rotate(-45deg);
+#wsg-root .wsg-logo-edit-btn {
+    background: #fff;
+    border-color: #2271b1;
+    color: #2271b1;
 }
 
-#wsg-root .wsg-logo-body {
-    padding: 16px;
-    border-top: 1px solid #e0e0e0;
+#wsg-root .wsg-logo-edit-btn:hover {
+    background: #f0f7fc;
 }
 
-#wsg-root .wsg-logo-section--collapsed .wsg-logo-body {
-    display: none;
+#wsg-root .wsg-logo-remove-all {
+    background: #fff;
+    border-color: #ccc;
+    color: #666;
+}
+
+#wsg-root .wsg-logo-remove-all:hover {
+    background: #f9f9f9;
+    border-color: #999;
+}
+
+/* ==========================================================================
+   Logo Customization — Modal Overlay
+   ========================================================================== */
+
+body.wsg-modal-open {
+    overflow: hidden;
+}
+
+#wsg-root .wsg-logo-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#wsg-root .wsg-logo-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+#wsg-root .wsg-logo-modal-dialog {
+    position: relative;
+    z-index: 1;
+    background: #fff;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+#wsg-root .wsg-logo-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+    border-radius: 12px 12px 0 0;
+}
+
+#wsg-root .wsg-logo-modal-header .wsg-section-title {
+    margin: 0;
+    font-size: 16px;
+}
+
+#wsg-root .wsg-logo-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    color: #666;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.15s;
+}
+
+#wsg-root .wsg-logo-modal-close:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+#wsg-root .wsg-logo-modal-body {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 /* ==========================================================================

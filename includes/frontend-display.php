@@ -138,6 +138,9 @@ function wsg_enqueue_assets() {
 			'printAvailable'  => __( 'Print', 'wsg' ),
 			'embAvailable'    => __( 'Embroidery', 'wsg' ),
 			'perItem'         => __( 'per item', 'wsg' ),
+			'addLogo'         => __( 'Add your logo', 'wsg' ),
+			'editLogo'        => __( 'Edit logo', 'wsg' ),
+			'removeAll'       => __( 'Remove logo', 'wsg' ),
 		),
 	);
 

@@ -135,7 +135,7 @@
 	}
 
 	/* ───────────────────────────────────────────
-	 * Render: Logo Customization Section (3-step wizard)
+	 * Render: Logo Customization Section (modal wizard)
 	 * ─────────────────────────────────────────── */
 
 	function renderLogoSection() {
@@ -143,19 +143,55 @@
 			return null;
 		}
 
-		var $section = $('<div class="wsg-logo-section wsg-logo-section--collapsed">');
+		var $wrap = $('<div class="wsg-logo-wrap">');
 
-		// Clickable accordion header.
-		var $header = $('<div class="wsg-logo-header">');
-		var $title  = $('<h3 class="wsg-section-title">');
-		$title.append(document.createTextNode(wsgData.i18n.logoTitle + ' '));
-		$title.append($('<span class="wsg-logo-optional">').text(wsgData.i18n.logoOptional));
-		$header.append($title);
-		$header.append($('<span class="wsg-logo-chevron">'));
-		$section.append($header);
+		// ── Trigger area ─────────────────────────────────────
+		var $trigger = $('<div class="wsg-logo-trigger">');
 
-		// Collapsible body.
-		var $body = $('<div class="wsg-logo-body">');
+		// "Add logo" button (shown when no logo configured).
+		var $openBtn = $('<button type="button" class="wsg-logo-open-btn">');
+		$openBtn.append($('<span class="wsg-logo-open-icon">'));
+		$openBtn.append(document.createTextNode(' ' + wsgData.i18n.addLogo + ' '));
+		$openBtn.append($('<span class="wsg-logo-optional">').text(wsgData.i18n.logoOptional));
+		$trigger.append($openBtn);
+
+		// Summary card (shown after wizard completed; hidden initially).
+		var $summary = $('<div class="wsg-logo-summary-card">').hide();
+		$summary.append($('<div class="wsg-logo-summary-preview">'));
+		var $summaryInfo = $('<div class="wsg-logo-summary-info">');
+		$summaryInfo.append($('<span class="wsg-logo-summary-positions">'));
+		$summaryInfo.append($('<span class="wsg-logo-summary-method">'));
+		$summary.append($summaryInfo);
+		var $summaryActions = $('<div class="wsg-logo-summary-actions">');
+		$summaryActions.append(
+			$('<button type="button" class="wsg-logo-edit-btn">').text(wsgData.i18n.editLogo)
+		);
+		$summaryActions.append(
+			$('<button type="button" class="wsg-logo-remove-all">').text(wsgData.i18n.removeAll)
+		);
+		$summary.append($summaryActions);
+		$trigger.append($summary);
+		$wrap.append($trigger);
+
+		// ── Modal (position:fixed, inside #wsg-root) ─────────
+		var $modal = $('<div class="wsg-logo-modal">').hide();
+		$modal.append($('<div class="wsg-logo-modal-backdrop">'));
+
+		var $dialog = $('<div class="wsg-logo-modal-dialog">').attr({
+			'role': 'dialog',
+			'aria-modal': 'true'
+		});
+
+		// Modal header.
+		var $modalHeader = $('<div class="wsg-logo-modal-header">');
+		$modalHeader.append($('<h3 class="wsg-section-title">').text(wsgData.i18n.logoTitle));
+		$modalHeader.append(
+			$('<button type="button" class="wsg-logo-modal-close" aria-label="Close">').html('&times;')
+		);
+		$dialog.append($modalHeader);
+
+		// Modal body — wizard content.
+		var $modalBody = $('<div class="wsg-logo-modal-body">');
 
 		// Step indicator.
 		var $steps = $('<div class="wsg-wizard-steps">');
@@ -176,7 +212,7 @@
 			}
 			$steps.append($step);
 		}
-		$body.append($steps);
+		$modalBody.append($steps);
 
 		// ── Step 1: Position selection ──────────────────────
 		var $pane1 = $('<div class="wsg-wizard-pane" data-pane="1">');
@@ -212,7 +248,7 @@
 			$('<button type="button" class="wsg-wizard-continue">').text(wsgData.i18n.continue).prop('disabled', true)
 		);
 		$pane1.append($nav1);
-		$body.append($pane1);
+		$modalBody.append($pane1);
 
 		// ── Step 2: Method selection ────────────────────────
 		var $pane2 = $('<div class="wsg-wizard-pane" data-pane="2">').css('display', 'none');
@@ -247,7 +283,7 @@
 		$nav2.append($('<button type="button" class="wsg-wizard-back">').text(wsgData.i18n.back));
 		$nav2.append($('<button type="button" class="wsg-wizard-continue">').text(wsgData.i18n.continue));
 		$pane2.append($nav2);
-		$body.append($pane2);
+		$modalBody.append($pane2);
 
 		// ── Step 3: Logo upload ─────────────────────────────
 		var $pane3 = $('<div class="wsg-wizard-pane" data-pane="3">').css('display', 'none');
@@ -307,10 +343,13 @@
 		$nav3.append($('<button type="button" class="wsg-wizard-back">').text(wsgData.i18n.back));
 		$nav3.append($('<button type="button" class="wsg-wizard-finish">').text(wsgData.i18n.finish));
 		$pane3.append($nav3);
-		$body.append($pane3);
+		$modalBody.append($pane3);
 
-		$section.append($body);
-		return $section;
+		$dialog.append($modalBody);
+		$modal.append($dialog);
+		$wrap.append($modal);
+
+		return $wrap;
 	}
 
 	/* ───────────────────────────────────────────
@@ -722,14 +761,6 @@
 	}
 
 	/* ───────────────────────────────────────────
-	 * Event: Logo accordion toggle
-	 * ─────────────────────────────────────────── */
-
-	function handleLogoToggle() {
-		$(this).closest('.wsg-logo-section').toggleClass('wsg-logo-section--collapsed');
-	}
-
-	/* ───────────────────────────────────────────
 	 * Event: Logo dropzone click
 	 * ─────────────────────────────────────────── */
 
@@ -840,9 +871,6 @@
 					$dropzone.hide();
 					$('.wsg-logo-preview-img').attr('src', response.data.thumbnail || response.data.url);
 					$('.wsg-logo-preview').show();
-
-					// Auto-expand if collapsed.
-					$('.wsg-logo-section').removeClass('wsg-logo-section--collapsed');
 
 					updateTotals();
 				} else {
@@ -976,8 +1004,8 @@
 
 	function handleWizardFinish(e) {
 		e.preventDefault();
-		// Collapse the accordion to signal completion.
-		$('.wsg-logo-section').addClass('wsg-logo-section--collapsed');
+		closeLogoModal();
+		updateLogoTriggerArea();
 		updateTotals();
 	}
 
@@ -1006,6 +1034,138 @@
 
 	function handleNotesChange() {
 		state.logo.notes = $(this).val();
+	}
+
+	/* ───────────────────────────────────────────
+	 * Logo modal helpers
+	 * ─────────────────────────────────────────── */
+
+	function openLogoModal() {
+		$('.wsg-logo-modal').show();
+		$('body').addClass('wsg-modal-open');
+	}
+
+	function closeLogoModal() {
+		$('.wsg-logo-modal').hide();
+		$('body').removeClass('wsg-modal-open');
+	}
+
+	function resetLogoWizard() {
+		$('.wsg-wizard-pane').hide();
+		$('.wsg-wizard-pane[data-pane="1"]').show();
+		$('.wsg-wizard-step').removeClass('wsg-wizard-step--active wsg-wizard-step--done');
+		$('.wsg-wizard-step[data-step="1"]').addClass('wsg-wizard-step--active');
+		$('.wsg-logo-pos-card').removeClass('wsg-logo-pos-card--active');
+		$('.wsg-wizard-pane[data-pane="1"] .wsg-wizard-continue').prop('disabled', true);
+		$('.wsg-logo-preview').hide();
+		$('.wsg-logo-dropzone').show();
+		$('.wsg-logo-no-logo-input').prop('checked', false);
+		$('.wsg-logo-notes').val('');
+		$('.wsg-logo-method-card').removeClass('wsg-logo-method-card--active');
+		$('.wsg-logo-method-card[data-method="print"]').addClass('wsg-logo-method-card--active');
+	}
+
+	function updateLogoTriggerArea() {
+		var hasConfig = state.logo.positions.length > 0;
+		$('.wsg-logo-open-btn').toggle(!hasConfig);
+		var $summary = $('.wsg-logo-summary-card');
+		if (hasConfig) {
+			var positionLabels = state.logo.positions.map(function(slug) {
+				var match = null;
+				$.each(wsgData.logoPositions, function(i, p) {
+					if (p.slug === slug) { match = p.label; return false; }
+				});
+				return match || slug;
+			}).join(', ');
+			var methodLabel = (state.logo.method === 'embroidery')
+				? wsgData.i18n.embroidery
+				: wsgData.i18n.print;
+			$('.wsg-logo-summary-positions').text(positionLabels);
+			$('.wsg-logo-summary-method').text(methodLabel);
+			if (state.logo.url) {
+				$('.wsg-logo-summary-preview')
+					.empty()
+					.append($('<img>').attr({ src: state.logo.url, alt: 'Logo' }));
+			}
+			$summary.show();
+		} else {
+			$summary.hide();
+		}
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Open logo modal
+	 * ─────────────────────────────────────────── */
+
+	function handleLogoOpenModal(e) {
+		e.preventDefault();
+
+		if (state.logo.positions.length > 0) {
+			// Editing: restore current selections into the wizard UI.
+			resetLogoWizard();
+
+			// Re-select position cards.
+			$.each(state.logo.positions, function(i, slug) {
+				$('.wsg-logo-pos-card[data-position="' + slug + '"]').addClass('wsg-logo-pos-card--active');
+			});
+			$('.wsg-wizard-pane[data-pane="1"] .wsg-wizard-continue').prop('disabled', false);
+
+			// Re-select method card.
+			$('.wsg-logo-method-card').removeClass('wsg-logo-method-card--active');
+			$('.wsg-logo-method-card[data-method="' + state.logo.method + '"]').addClass('wsg-logo-method-card--active');
+
+			// Restore upload state.
+			if (state.logo.attachmentId) {
+				$('.wsg-logo-dropzone').hide();
+				$('.wsg-logo-preview-img').attr('src', state.logo.url);
+				$('.wsg-logo-preview').show();
+			}
+			if (state.logo.noLogo) {
+				$('.wsg-logo-no-logo-input').prop('checked', true);
+				$('.wsg-logo-dropzone').hide();
+			}
+			if (state.logo.notes) {
+				$('.wsg-logo-notes').val(state.logo.notes);
+			}
+
+			// Jump straight to step 3 so user can review / change.
+			$('.wsg-wizard-pane').hide();
+			$('.wsg-wizard-pane[data-pane="3"]').show();
+			$('.wsg-wizard-step').removeClass('wsg-wizard-step--active wsg-wizard-step--done');
+			$('.wsg-wizard-step[data-step="1"]').addClass('wsg-wizard-step--done');
+			$('.wsg-wizard-step[data-step="2"]').addClass('wsg-wizard-step--done');
+			$('.wsg-wizard-step[data-step="3"]').addClass('wsg-wizard-step--active');
+		}
+
+		openLogoModal();
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Close logo modal
+	 * ─────────────────────────────────────────── */
+
+	function handleLogoModalClose(e) {
+		e.preventDefault();
+		closeLogoModal();
+	}
+
+	/* ───────────────────────────────────────────
+	 * Event: Remove all logo config
+	 * ─────────────────────────────────────────── */
+
+	function handleLogoRemoveAll(e) {
+		e.preventDefault();
+		state.logo = {
+			attachmentId: null,
+			url:          null,
+			positions:    [],
+			method:       'print',
+			notes:        '',
+			noLogo:       false
+		};
+		resetLogoWizard();
+		updateLogoTriggerArea();
+		updateTotals();
 	}
 
 	/* ───────────────────────────────────────────
@@ -1128,19 +1288,9 @@
 							notes:        '',
 							noLogo:       false
 						};
-						// Reset wizard to step 1.
-						$('.wsg-wizard-pane').hide();
-						$('.wsg-wizard-pane[data-pane="1"]').show();
-						$('.wsg-wizard-step').removeClass('wsg-wizard-step--active wsg-wizard-step--done');
-						$('.wsg-wizard-step[data-step="1"]').addClass('wsg-wizard-step--active');
-						$('.wsg-logo-pos-card').removeClass('wsg-logo-pos-card--active');
-						$('.wsg-wizard-pane[data-pane="1"] .wsg-wizard-continue').prop('disabled', true);
-						$('.wsg-logo-preview').hide();
-						$('.wsg-logo-dropzone').show();
-						$('.wsg-logo-no-logo-input').prop('checked', false);
-						$('.wsg-logo-notes').val('');
-						$('.wsg-logo-method-card').removeClass('wsg-logo-method-card--active');
-						$('.wsg-logo-method-card[data-method="print"]').addClass('wsg-logo-method-card--active');
+						closeLogoModal();
+						resetLogoWizard();
+						updateLogoTriggerArea();
 					}
 
 					updateTotals();
@@ -1202,7 +1352,11 @@
 		$root.on('click', '.wsg-add-to-cart', handleAddToCart);
 
 		// Logo events.
-		$root.on('click', '.wsg-logo-header', handleLogoToggle);
+		$root.on('click', '.wsg-logo-open-btn', handleLogoOpenModal);
+		$root.on('click', '.wsg-logo-edit-btn', handleLogoOpenModal);
+		$root.on('click', '.wsg-logo-modal-close', handleLogoModalClose);
+		$root.on('click', '.wsg-logo-modal-backdrop', handleLogoModalClose);
+		$root.on('click', '.wsg-logo-remove-all', handleLogoRemoveAll);
 		$root.on('click', '.wsg-logo-dropzone', handleDropzoneClick);
 		$root.on('dragenter dragover', '.wsg-logo-dropzone', handleDragOver);
 		$root.on('dragleave', '.wsg-logo-dropzone', handleDragLeave);
