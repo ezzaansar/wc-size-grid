@@ -173,7 +173,11 @@ function wsg_enqueue_assets() {
 
 	$data = apply_filters( 'wsg_localized_data', $data, $product );
 
-	wp_localize_script( 'wsg-frontend-js', 'wsgData', $data );
+	wp_add_inline_script(
+		'wsg-frontend-js',
+		'var wsgData = ' . wp_json_encode( $data ) . ';',
+		'before'
+	);
 }
 
 /* ───────────────────────────────────────────

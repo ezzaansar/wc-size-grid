@@ -314,7 +314,7 @@ add_filter( 'woocommerce_cart_item_quantity', 'wsg_bundle_cart_item_qty', 10, 3 
  */
 function wsg_bundle_checkout_item_qty( $quantity_html, $cart_item, $cart_item_key ) {
 	if ( ! empty( $cart_item['_wsg_is_bundle'] ) && 0 === (int) $cart_item['_wsg_bundle_index'] ) {
-		return '';
+		return ' <strong class="product-quantity">&times;&nbsp;1</strong>';
 	}
 	return $quantity_html;
 }
@@ -417,16 +417,22 @@ function wsg_bundle_item_data( $item_data, $cart_item ) {
 	}
 
 	/* --- Logo info --- */
-	if ( ! empty( $cart_item['_wsg_logo_position'] ) && ! empty( $cart_item['_wsg_logo_method'] ) ) {
+	$logo_positions_raw = isset( $cart_item['_wsg_logo_positions'] ) ? $cart_item['_wsg_logo_positions'] : array();
+	if ( ! is_array( $logo_positions_raw ) ) {
+		$logo_positions_raw = array( $logo_positions_raw );
+	}
+
+	if ( ! empty( $logo_positions_raw ) && ! empty( $cart_item['_wsg_logo_method'] ) ) {
 		$position_labels = wsg_get_logo_position_labels();
-		$pos_label       = isset( $position_labels[ $cart_item['_wsg_logo_position'] ] )
-			? $position_labels[ $cart_item['_wsg_logo_position'] ]
-			: $cart_item['_wsg_logo_position'];
-		$method_label    = ( 'embroidery' === $cart_item['_wsg_logo_method'] )
+		$pos_label_parts = array();
+		foreach ( $logo_positions_raw as $logo_pos ) {
+			$pos_label_parts[] = isset( $position_labels[ $logo_pos ] ) ? $position_labels[ $logo_pos ] : $logo_pos;
+		}
+		$method_label = ( 'embroidery' === $cart_item['_wsg_logo_method'] )
 			? __( 'Embroidery', 'wsg' )
 			: __( 'Print', 'wsg' );
 
-		$logo_display = esc_html( $pos_label ) . ' &mdash; ' . esc_html( $method_label );
+		$logo_display = esc_html( implode( ', ', $pos_label_parts ) ) . ' &mdash; ' . esc_html( $method_label );
 
 		if ( ! empty( $cart_item['_wsg_logo_url'] ) ) {
 			$logo_display .= '<br><img src="' . esc_url( $cart_item['_wsg_logo_url'] ) . '" alt="'

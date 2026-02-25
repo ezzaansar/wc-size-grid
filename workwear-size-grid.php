@@ -30,24 +30,29 @@ define( 'WSG_PLUGIN_FILE', __FILE__ );
  *
  * Declared early (before_woocommerce_init) so
  * WC sees it before its own plugins_loaded.
- * Closure is acceptable here — matches WC's
- * own documentation pattern.
  * ─────────────────────────────────────────── */
 
-add_action( 'before_woocommerce_init', function () {
+add_action( 'before_woocommerce_init', 'wsg_declare_feature_compat' );
+
+/**
+ * Declare HPOS compatibility and Blocks incompatibility.
+ *
+ * @return void
+ */
+function wsg_declare_feature_compat() {
 	if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
 		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
 			'custom_order_tables',
-			__FILE__,
+			WSG_PLUGIN_FILE,
 			true
 		);
 		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
 			'cart_checkout_blocks',
-			__FILE__,
+			WSG_PLUGIN_FILE,
 			false
 		);
 	}
-} );
+}
 
 /* ───────────────────────────────────────────
  * Bootstrap: verify WooCommerce, then load
@@ -98,6 +103,24 @@ function wsg_missing_wc_notice() {
 		</p>
 	</div>
 	<?php
+}
+
+/* ───────────────────────────────────────────
+ * Deactivation: clean up scheduled events
+ * ─────────────────────────────────────────── */
+
+register_deactivation_hook( __FILE__, 'wsg_deactivate' );
+
+/**
+ * Remove scheduled cron events on plugin deactivation.
+ *
+ * @return void
+ */
+function wsg_deactivate() {
+	$timestamp = wp_next_scheduled( 'wsg_cleanup_orphan_logos' );
+	if ( $timestamp ) {
+		wp_unschedule_event( $timestamp, 'wsg_cleanup_orphan_logos' );
+	}
 }
 
 /* ───────────────────────────────────────────

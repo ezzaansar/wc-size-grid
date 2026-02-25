@@ -7,6 +7,11 @@
 
 /* ==========================================================================
    Form Hiding (the ONLY !important rules)
+
+   These rules are intentionally duplicated in frontend-display.php as inline
+   <style> in wp_head. The inline copy loads before this stylesheet to prevent
+   a flash of the default WC dropdowns (FOUC). This copy acts as the
+   long-term stylesheet rule once the CSS file has loaded.
    ========================================================================== */
 
 .wsg-active .variations_form .variations { display: none !important; }

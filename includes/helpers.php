@@ -133,13 +133,6 @@ function wsg_get_color_hex( $term_name, $term_slug = '', $term_id = 0 ) {
 }
 
 /**
- * Find the matching discount tier for a given quantity.
- *
- * @param array $tiers Array of tiers: [ ['min' => 10, 'max' => 20, 'discount' => 0.50], ... ]
- * @param int   $qty   Total quantity.
- * @return float Discount per item, or 0 if no tier matches.
- */
-/**
  * Detect the logo position attribute taxonomy.
  *
  * Searches all registered WooCommerce product attributes for one whose

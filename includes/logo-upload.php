@@ -1,9 +1,10 @@
 <?php
 /**
- * Logo file upload AJAX endpoint.
+ * Logo file upload AJAX endpoint and orphan cleanup.
  *
  * Handles customer logo uploads on the product page via a dedicated
  * WC AJAX endpoint. Files are saved as WordPress attachments.
+ * Includes a daily cron to remove orphaned uploads not tied to any order.
  *
  * @package WorkwearSizeGrid
  */
@@ -11,6 +12,76 @@
 defined( 'ABSPATH' ) || exit;
 
 add_action( 'wc_ajax_wsg_upload_logo', 'wsg_handle_logo_upload' );
+
+/* ───────────────────────────────────────────
+ * Orphan logo cleanup cron
+ * ─────────────────────────────────────────── */
+
+add_action( 'init', 'wsg_schedule_logo_cleanup' );
+add_action( 'wsg_cleanup_orphan_logos', 'wsg_cleanup_orphan_logo_uploads' );
+
+/**
+ * Schedule daily cleanup of orphaned logo uploads.
+ *
+ * @return void
+ */
+function wsg_schedule_logo_cleanup() {
+	if ( ! wp_next_scheduled( 'wsg_cleanup_orphan_logos' ) ) {
+		wp_schedule_event( time(), 'daily', 'wsg_cleanup_orphan_logos' );
+	}
+}
+
+/**
+ * Delete logo uploads older than 30 days that aren't referenced by any order.
+ *
+ * Processes up to 50 attachments per run to avoid long-running queries.
+ * Retention period can be adjusted via the `wsg_logo_cleanup_days` filter.
+ *
+ * @return void
+ */
+function wsg_cleanup_orphan_logo_uploads() {
+	global $wpdb;
+
+	$days   = (int) apply_filters( 'wsg_logo_cleanup_days', 30 );
+	$cutoff = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
+
+	// Find logo uploads older than the retention period.
+	$attachment_ids = $wpdb->get_col(
+		$wpdb->prepare(
+			"SELECT p.ID FROM {$wpdb->posts} p
+			 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+			 WHERE p.post_type = 'attachment'
+			   AND pm.meta_key = '_wsg_logo_upload'
+			   AND pm.meta_value = 'yes'
+			   AND p.post_date_gmt < %s
+			 LIMIT 50",
+			$cutoff
+		)
+	);
+
+	if ( empty( $attachment_ids ) ) {
+		return;
+	}
+
+	$order_items_table = $wpdb->prefix . 'woocommerce_order_itemmeta';
+
+	foreach ( $attachment_ids as $att_id ) {
+		// Check if any order line item references this attachment.
+		$in_use = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT 1 FROM {$order_items_table}
+				 WHERE meta_key = '_wsg_logo_attachment_id'
+				   AND meta_value = %s
+				 LIMIT 1",
+				$att_id
+			)
+		);
+
+		if ( ! $in_use ) {
+			wp_delete_attachment( (int) $att_id, true );
+		}
+	}
+}
 
 /**
  * Handle logo file upload via AJAX.

@@ -283,7 +283,6 @@ function wsg_apply_bulk_discount( $cart ) {
 
 		$final_price = max( 0, $base_price - $discount + $logo_surcharge );
 		$cart_item['data']->set_price( $final_price );
-		$cart_item['data']->set_regular_price( $final_price );
 	}
 }
 
