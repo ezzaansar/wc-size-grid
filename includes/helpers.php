@@ -217,6 +217,13 @@ function wsg_get_logo_position_labels() {
 	);
 }
 
+/**
+ * Look up the discount amount for a given quantity from a set of tiers.
+ *
+ * @param array $tiers Array of tier arrays with 'min', 'max', 'discount' keys.
+ * @param int   $qty   Total quantity to match against tiers.
+ * @return float Discount amount, or 0 if no matching tier.
+ */
 function wsg_get_discount_for_qty( $tiers, $qty ) {
 	if ( empty( $tiers ) || $qty <= 0 ) {
 		return 0;
@@ -232,4 +239,151 @@ function wsg_get_discount_for_qty( $tiers, $qty ) {
 	}
 
 	return 0;
+}
+
+/**
+ * Parse and validate logo customization data from $_POST.
+ *
+ * Validates the logo attachment, positions, and method against the product's
+ * allowed settings. Returns an array of logo data suitable for cart item meta,
+ * or null if no logo was submitted.
+ *
+ * Sends a JSON error response and terminates if validation fails.
+ *
+ * @param int $product_id Product ID for looking up allowed positions/prices.
+ * @return array|null Logo data array, or null if no logo data submitted.
+ */
+function wsg_parse_logo_data_from_post( $product_id ) {
+	$logo_attachment_id  = isset( $_POST['logo_attachment_id'] ) ? absint( $_POST['logo_attachment_id'] ) : 0;
+	$logo_positions_json = isset( $_POST['logo_positions'] ) ? wp_unslash( $_POST['logo_positions'] ) : '[]';
+	$logo_positions      = json_decode( $logo_positions_json, true );
+	$logo_positions      = is_array( $logo_positions ) ? array_map( 'sanitize_text_field', $logo_positions ) : array();
+	$logo_method         = isset( $_POST['logo_method'] ) ? sanitize_text_field( wp_unslash( $_POST['logo_method'] ) ) : '';
+	$logo_notes          = isset( $_POST['logo_notes'] ) ? sanitize_textarea_field( wp_unslash( $_POST['logo_notes'] ) ) : '';
+
+	if ( empty( $logo_positions ) || ! $logo_method ) {
+		return null;
+	}
+
+	if ( $logo_attachment_id && ! wp_attachment_is_image( $logo_attachment_id ) ) {
+		wp_send_json_error( array( 'message' => __( 'Invalid logo file.', 'wsg' ) ) );
+	}
+
+	$allowed_positions = get_post_meta( $product_id, '_wsg_logo_positions', true );
+	$allowed_positions = is_array( $allowed_positions ) ? $allowed_positions : array();
+	foreach ( $logo_positions as $logo_pos ) {
+		if ( ! in_array( $logo_pos, $allowed_positions, true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid logo position.', 'wsg' ) ) );
+		}
+	}
+
+	if ( ! in_array( $logo_method, array( 'print', 'embroidery' ), true ) ) {
+		wp_send_json_error( array( 'message' => __( 'Invalid logo method.', 'wsg' ) ) );
+	}
+
+	$logo_surcharge = ( 'embroidery' === $logo_method )
+		? floatval( get_post_meta( $product_id, '_wsg_logo_embroidery_price', true ) )
+		: floatval( get_post_meta( $product_id, '_wsg_logo_print_price', true ) );
+
+	$data = array(
+		'attachment_id' => $logo_attachment_id,
+		'positions'     => $logo_positions,
+		'method'        => $logo_method,
+		'surcharge'     => $logo_surcharge,
+		'notes'         => $logo_notes,
+	);
+
+	if ( $logo_attachment_id ) {
+		$data['url'] = wp_get_attachment_url( $logo_attachment_id );
+	}
+
+	return $data;
+}
+
+/**
+ * Add logo customization fields to a cart item data array.
+ *
+ * @param array      $cart_item_data Cart item data to augment.
+ * @param array|null $logo_data      Logo data from wsg_parse_logo_data_from_post(), or null.
+ * @return array Modified cart item data.
+ */
+function wsg_add_logo_to_cart_item_data( $cart_item_data, $logo_data ) {
+	if ( ! $logo_data ) {
+		return $cart_item_data;
+	}
+
+	if ( ! empty( $logo_data['attachment_id'] ) ) {
+		$cart_item_data['_wsg_logo_attachment_id'] = $logo_data['attachment_id'];
+		$cart_item_data['_wsg_logo_url']           = $logo_data['url'] ?? '';
+	}
+	$cart_item_data['_wsg_logo_positions'] = $logo_data['positions'];
+	$cart_item_data['_wsg_logo_method']    = $logo_data['method'];
+	$cart_item_data['_wsg_logo_surcharge'] = $logo_data['surcharge'];
+	if ( ! empty( $logo_data['notes'] ) ) {
+		$cart_item_data['_wsg_logo_notes'] = $logo_data['notes'];
+	}
+
+	return $cart_item_data;
+}
+
+/**
+ * Build logo display rows for woocommerce_get_item_data.
+ *
+ * Returns an array of item data rows showing logo position, method,
+ * thumbnail, surcharge, and notes. Returns an empty array if the
+ * cart item has no logo data.
+ *
+ * @param array $cart_item Cart item data.
+ * @return array Array of item data rows (each with 'key' and 'value').
+ */
+function wsg_get_logo_item_display_data( $cart_item ) {
+	$logo_positions_raw = isset( $cart_item['_wsg_logo_positions'] ) ? $cart_item['_wsg_logo_positions'] : array();
+	if ( ! is_array( $logo_positions_raw ) ) {
+		// Backward compat: single position string.
+		$logo_positions_raw = array( $logo_positions_raw );
+	}
+
+	if ( empty( $logo_positions_raw ) || empty( $cart_item['_wsg_logo_method'] ) ) {
+		return array();
+	}
+
+	$rows = array();
+
+	$position_labels = wsg_get_logo_position_labels();
+	$pos_label_parts = array();
+	foreach ( $logo_positions_raw as $logo_pos ) {
+		$pos_label_parts[] = isset( $position_labels[ $logo_pos ] ) ? $position_labels[ $logo_pos ] : $logo_pos;
+	}
+	$method_label = ( 'embroidery' === $cart_item['_wsg_logo_method'] )
+		? __( 'Embroidery', 'wsg' )
+		: __( 'Print', 'wsg' );
+
+	$logo_display = esc_html( implode( ', ', $pos_label_parts ) ) . ' &mdash; ' . esc_html( $method_label );
+
+	if ( ! empty( $cart_item['_wsg_logo_url'] ) ) {
+		$logo_display .= '<br><img src="' . esc_url( $cart_item['_wsg_logo_url'] ) . '" alt="'
+			. esc_attr__( 'Logo', 'wsg' ) . '" style="max-width:40px;max-height:40px;vertical-align:middle;margin-top:4px;">';
+	}
+
+	$rows[] = array(
+		'key'   => __( 'Logo', 'wsg' ),
+		'value' => $logo_display,
+	);
+
+	$surcharge = isset( $cart_item['_wsg_logo_surcharge'] ) ? floatval( $cart_item['_wsg_logo_surcharge'] ) : 0;
+	if ( $surcharge > 0 ) {
+		$rows[] = array(
+			'key'   => __( 'Logo surcharge', 'wsg' ),
+			'value' => '+' . wp_kses_post( wc_price( $surcharge ) ) . ' ' . esc_html__( 'per item', 'wsg' ),
+		);
+	}
+
+	if ( ! empty( $cart_item['_wsg_logo_notes'] ) ) {
+		$rows[] = array(
+			'key'   => __( 'Logo notes', 'wsg' ),
+			'value' => esc_html( $cart_item['_wsg_logo_notes'] ),
+		);
+	}
+
+	return $rows;
 }

@@ -12,6 +12,7 @@
 defined( 'ABSPATH' ) || exit;
 
 add_action( 'wc_ajax_wsg_upload_logo', 'wsg_handle_logo_upload' );
+add_action( 'wc_ajax_nopriv_wsg_upload_logo', 'wsg_handle_logo_upload' );
 
 /* ───────────────────────────────────────────
  * Orphan logo cleanup cron
