@@ -226,6 +226,9 @@
 			var $card = $('<button type="button" class="wsg-logo-pos-card">').attr('data-position', pos.slug);
 
 			var $tshirt = $('<div class="wsg-pos-tshirt">');
+			if (wsgData.productImage) {
+				$tshirt.css('background-image', 'url(' + wsgData.productImage + ')');
+			}
 			var dotClass = 'wsg-pos-dot--' + pos.slug.replace(/_/g, '-');
 			$tshirt.append($('<span>').addClass('wsg-pos-dot ' + dotClass));
 			$card.append($tshirt);
@@ -322,6 +325,15 @@
 		$preview.append($previewInfo);
 		$pane3.append($preview);
 
+		// Product preview with logo overlay (hidden until logo uploaded).
+		var $productPreview = $('<div class="wsg-logo-product-preview">').hide();
+		if (wsgData.productImage) {
+			$productPreview.append(
+				$('<img class="wsg-logo-product-img">').attr({ src: wsgData.productImage, alt: 'Product' })
+			);
+		}
+		$pane3.append($productPreview);
+
 		// "No logo" checkbox.
 		var $noLogoLabel = $('<label class="wsg-logo-no-logo">');
 		$noLogoLabel.append($('<input type="checkbox" class="wsg-logo-no-logo-input">'));
@@ -378,6 +390,59 @@
 		} else {
 			$note.text('');
 		}
+	}
+
+	/* ───────────────────────────────────────────
+	 * Logo: position coordinates for product preview
+	 * Keep in sync with .wsg-pos-dot--* rules in frontend.css
+	 * ─────────────────────────────────────────── */
+
+	var logoPositionCoords = {
+		'left-chest':    { top: 42, left: 36 },
+		'right-chest':   { top: 42, left: 64 },
+		'center-chest':  { top: 42, left: 50 },
+		'centre-chest':  { top: 42, left: 50 },
+		'left-sleeve':   { top: 40, left: 16 },
+		'right-sleeve':  { top: 40, left: 84 },
+		'back':          { top: 42, left: 50 },
+		'front-pocket':  { top: 46, left: 36 },
+		'front-center':  { top: 42, left: 50 },
+		'front-centre':  { top: 42, left: 50 }
+	};
+
+	/* ───────────────────────────────────────────
+	 * Logo: build / update product preview with logo overlay
+	 * ─────────────────────────────────────────── */
+
+	function updateLogoProductPreview() {
+		var $container = $('.wsg-logo-product-preview');
+		if (!$container.length || !wsgData.productImage) {
+			return;
+		}
+
+		var logoUrl = state.logo.url;
+		$container.find('.wsg-logo-overlay').remove();
+
+		if (!logoUrl || state.logo.positions.length === 0 || state.logo.noLogo) {
+			$container.hide();
+			return;
+		}
+
+		$.each(state.logo.positions, function(i, slug) {
+			var key    = slug.replace(/_/g, '-');
+			var coords = logoPositionCoords[key] || { top: 42, left: 50 };
+
+			var $overlay = $('<img>')
+				.addClass('wsg-logo-overlay')
+				.attr({ src: logoUrl, alt: 'Logo' })
+				.css({
+					top:  coords.top + '%',
+					left: coords.left + '%'
+				});
+			$container.append($overlay);
+		});
+
+		$container.show();
 	}
 
 	/* ───────────────────────────────────────────
@@ -872,6 +937,7 @@
 					$('.wsg-logo-preview-img').attr('src', response.data.thumbnail || response.data.url);
 					$('.wsg-logo-preview').show();
 
+					updateLogoProductPreview();
 					updateTotals();
 				} else {
 					var msg = (response.data && response.data.message) ? response.data.message : wsgData.i18n.error;
@@ -916,6 +982,7 @@
 		$('.wsg-logo-dropzone').show();
 		$('.wsg-logo-no-logo-input').prop('checked', false);
 
+		updateLogoProductPreview();
 		updateTotals();
 	}
 
@@ -1025,6 +1092,7 @@
 				$('.wsg-logo-preview').show();
 			}
 		}
+		updateLogoProductPreview();
 		updateTotals();
 	}
 
@@ -1082,10 +1150,26 @@
 				: wsgData.i18n.print;
 			$('.wsg-logo-summary-positions').text(positionLabels);
 			$('.wsg-logo-summary-method').text(methodLabel);
-			if (state.logo.url) {
-				$('.wsg-logo-summary-preview')
-					.empty()
-					.append($('<img>').attr({ src: state.logo.url, alt: 'Logo' }));
+
+			// Build product-with-logo preview in summary card.
+			var $summaryPreview = $('.wsg-logo-summary-preview').empty()
+				.removeClass('wsg-logo-summary-preview--product');
+			if (state.logo.url && wsgData.productImage) {
+				$summaryPreview.addClass('wsg-logo-summary-preview--product');
+				$summaryPreview.append(
+					$('<img class="wsg-logo-summary-product-img">').attr({ src: wsgData.productImage, alt: 'Product' })
+				);
+				$.each(state.logo.positions, function(i, slug) {
+					var key    = slug.replace(/_/g, '-');
+					var coords = logoPositionCoords[key] || { top: 42, left: 50 };
+					$summaryPreview.append(
+						$('<img class="wsg-logo-summary-overlay">')
+							.attr({ src: state.logo.url, alt: 'Logo' })
+							.css({ top: coords.top + '%', left: coords.left + '%' })
+					);
+				});
+			} else if (state.logo.url) {
+				$summaryPreview.append($('<img>').attr({ src: state.logo.url, alt: 'Logo' }));
 			}
 			$summary.show();
 		} else {
@@ -1135,6 +1219,8 @@
 			$('.wsg-wizard-step[data-step="1"]').addClass('wsg-wizard-step--done');
 			$('.wsg-wizard-step[data-step="2"]').addClass('wsg-wizard-step--done');
 			$('.wsg-wizard-step[data-step="3"]').addClass('wsg-wizard-step--active');
+
+			updateLogoProductPreview();
 		}
 
 		openLogoModal();

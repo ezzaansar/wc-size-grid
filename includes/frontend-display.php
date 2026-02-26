@@ -169,6 +169,12 @@ function wsg_enqueue_assets() {
 		$data['logoUploadUrl']       = WC_AJAX::get_endpoint( 'wsg_upload_logo' );
 		$data['logoMaxSize']         = 5 * MB_IN_BYTES;
 		$data['logoAllowedTypes']    = 'image/jpeg,image/png,image/gif,image/webp';
+
+		/* Product image for logo position preview (real image only, no placeholder). */
+		$image_id = $product->get_image_id();
+		if ( $image_id ) {
+			$data['productImage'] = esc_url( wp_get_attachment_image_url( $image_id, 'woocommerce_thumbnail' ) );
+		}
 	}
 
 	$data = apply_filters( 'wsg_localized_data', $data, $product );
