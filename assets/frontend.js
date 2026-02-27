@@ -229,8 +229,11 @@
 			if (wsgData.productImage) {
 				$tshirt.css('background-image', 'url(' + wsgData.productImage + ')');
 			}
-			var dotClass = 'wsg-pos-dot--' + pos.slug.replace(/_/g, '-');
-			$tshirt.append($('<span>').addClass('wsg-pos-dot ' + dotClass));
+			var dotCoords = resolvePositionCoords(pos.slug);
+			$tshirt.append(
+				$('<span>').addClass('wsg-pos-dot')
+					.css({ top: dotCoords.top + '%', left: dotCoords.left + '%' })
+			);
 			$card.append($tshirt);
 
 			$card.append($('<span class="wsg-pos-name">').text(pos.label));
@@ -393,22 +396,56 @@
 	}
 
 	/* ───────────────────────────────────────────
-	 * Logo: position coordinates for product preview
-	 * Keep in sync with .wsg-pos-dot--* rules in frontend.css
+	 * Logo: resolve position coordinates from slug
+	 * Tries exact match first, then keyword-based inference
+	 * so any custom WC attribute term gets placed correctly.
 	 * ─────────────────────────────────────────── */
 
-	var logoPositionCoords = {
+	var logoPositionExact = {
 		'left-chest':    { top: 42, left: 36 },
 		'right-chest':   { top: 42, left: 64 },
 		'center-chest':  { top: 42, left: 50 },
 		'centre-chest':  { top: 42, left: 50 },
 		'left-sleeve':   { top: 40, left: 16 },
 		'right-sleeve':  { top: 40, left: 84 },
-		'back':          { top: 42, left: 50 },
+		'back':          { top: 55, left: 50 },
 		'front-pocket':  { top: 46, left: 36 },
 		'front-center':  { top: 42, left: 50 },
 		'front-centre':  { top: 42, left: 50 }
 	};
+
+	function resolvePositionCoords(slug) {
+		var key = slug.replace(/_/g, '-').toLowerCase();
+
+		// Exact match.
+		if (logoPositionExact[key]) {
+			return logoPositionExact[key];
+		}
+
+		// Keyword-based inference.
+		if (key.indexOf('neck') !== -1 || key.indexOf('nape') !== -1) {
+			return { top: 18, left: 50 };
+		}
+		if (key.indexOf('breast') !== -1 || key.indexOf('chest') !== -1) {
+			if (key.indexOf('left') !== -1)  return { top: 42, left: 36 };
+			if (key.indexOf('right') !== -1) return { top: 42, left: 64 };
+			return { top: 42, left: 50 };
+		}
+		if (key.indexOf('sleeve') !== -1 || key.indexOf('arm') !== -1) {
+			if (key.indexOf('left') !== -1)  return { top: 40, left: 16 };
+			if (key.indexOf('right') !== -1) return { top: 40, left: 84 };
+			return { top: 40, left: 50 };
+		}
+		if (key.indexOf('back') !== -1) {
+			return { top: 55, left: 50 };
+		}
+		if (key.indexOf('pocket') !== -1) {
+			return { top: 46, left: 36 };
+		}
+
+		// Default: center chest.
+		return { top: 42, left: 50 };
+	}
 
 	/* ───────────────────────────────────────────
 	 * Logo: build / update product preview with logo overlay
@@ -429,8 +466,7 @@
 		}
 
 		$.each(state.logo.positions, function(i, slug) {
-			var key    = slug.replace(/_/g, '-');
-			var coords = logoPositionCoords[key] || { top: 42, left: 50 };
+			var coords = resolvePositionCoords(slug);
 
 			var $overlay = $('<img>')
 				.addClass('wsg-logo-overlay')
@@ -1160,8 +1196,7 @@
 					$('<img class="wsg-logo-summary-product-img">').attr({ src: wsgData.productImage, alt: 'Product' })
 				);
 				$.each(state.logo.positions, function(i, slug) {
-					var key    = slug.replace(/_/g, '-');
-					var coords = logoPositionCoords[key] || { top: 42, left: 50 };
+					var coords = resolvePositionCoords(slug);
 					$summaryPreview.append(
 						$('<img class="wsg-logo-summary-overlay">')
 							.attr({ src: state.logo.url, alt: 'Logo' })

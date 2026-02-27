@@ -218,6 +218,83 @@ function wsg_get_logo_position_labels() {
 }
 
 /**
+ * Check if a product belongs to a category with auto-enabled logo customization.
+ *
+ * Returns false if no category match, or a config array if matched:
+ *   [ 'positions' => [...slugs], 'print_price' => float, 'embroidery_price' => float ]
+ *
+ * Per-product _wsg_logo_enabled always takes priority over this.
+ *
+ * @param int $product_id Product ID.
+ * @return array|false Logo config or false.
+ */
+function wsg_get_category_logo_config( $product_id ) {
+	// Categories that get ALL logo positions.
+	$all_position_cats = array(
+		'personalised-hoodies',
+		'personalised-jackets',
+		'personalised-knitwear',
+		'personalised-loungewear',
+		'personalised-polo-shirts',
+		'personalised-t-shirts',
+	);
+
+	// Categories that only get left/right breast positions.
+	$limited_cats = array(
+		'personalised-aprons',
+	);
+
+	$product_cats = wc_get_product_cat_ids( $product_id );
+	if ( empty( $product_cats ) ) {
+		return false;
+	}
+
+	// Batch-fetch category slugs in a single query.
+	$terms     = get_terms(
+		array(
+			'taxonomy' => 'product_cat',
+			'include'  => $product_cats,
+			'fields'   => 'slugs',
+		)
+	);
+	$cat_slugs = is_wp_error( $terms ) ? array() : $terms;
+
+	$all_labels = wsg_get_logo_position_labels();
+
+	// Check "all positions" categories first.
+	if ( array_intersect( $cat_slugs, $all_position_cats ) ) {
+		return array(
+			'positions'       => array_keys( $all_labels ),
+			'print_price'     => 5.0,
+			'embroidery_price' => 8.0,
+		);
+	}
+
+	// Check "limited positions" categories.
+	if ( array_intersect( $cat_slugs, $limited_cats ) ) {
+		// Only breast/chest positions.
+		$limited_slugs = array();
+		foreach ( array_keys( $all_labels ) as $slug ) {
+			if ( strpos( $slug, 'breast' ) !== false || strpos( $slug, 'chest' ) !== false ) {
+				// Only left and right, not center/centre.
+				if ( strpos( $slug, 'left' ) !== false || strpos( $slug, 'right' ) !== false ) {
+					$limited_slugs[] = $slug;
+				}
+			}
+		}
+		if ( ! empty( $limited_slugs ) ) {
+			return array(
+				'positions'        => $limited_slugs,
+				'print_price'      => 5.0,
+				'embroidery_price' => 8.0,
+			);
+		}
+	}
+
+	return false;
+}
+
+/**
  * Look up the discount amount for a given quantity from a set of tiers.
  *
  * @param array $tiers Array of tier arrays with 'min', 'max', 'discount' keys.

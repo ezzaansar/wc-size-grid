@@ -145,15 +145,17 @@ function wsg_enqueue_assets() {
 	);
 
 	/* --- Logo customization data --- */
-	$logo_enabled = get_post_meta( $product->get_id(), '_wsg_logo_enabled', true ) === 'yes';
-	$data['logoEnabled'] = $logo_enabled;
+	$logo_enabled    = get_post_meta( $product->get_id(), '_wsg_logo_enabled', true ) === 'yes';
+	$logo_positions  = array();
+	$logo_print      = 0.0;
+	$logo_embroidery = 0.0;
 
 	if ( $logo_enabled ) {
+		// Per-product settings take priority.
 		$positions_raw = get_post_meta( $product->get_id(), '_wsg_logo_positions', true );
 		$positions     = is_array( $positions_raw ) ? $positions_raw : array();
 		$all_labels    = wsg_get_logo_position_labels();
 
-		$logo_positions = array();
 		foreach ( $positions as $slug ) {
 			if ( isset( $all_labels[ $slug ] ) ) {
 				$logo_positions[] = array(
@@ -163,9 +165,35 @@ function wsg_enqueue_assets() {
 			}
 		}
 
+		$logo_print      = floatval( get_post_meta( $product->get_id(), '_wsg_logo_print_price', true ) );
+		$logo_embroidery = floatval( get_post_meta( $product->get_id(), '_wsg_logo_embroidery_price', true ) );
+	} else {
+		// Fallback: check category-level auto-enable.
+		$cat_config = wsg_get_category_logo_config( $product->get_id() );
+		if ( $cat_config ) {
+			$logo_enabled = true;
+			$all_labels   = wsg_get_logo_position_labels();
+
+			foreach ( $cat_config['positions'] as $slug ) {
+				if ( isset( $all_labels[ $slug ] ) ) {
+					$logo_positions[] = array(
+						'slug'  => $slug,
+						'label' => $all_labels[ $slug ],
+					);
+				}
+			}
+
+			$logo_print      = $cat_config['print_price'];
+			$logo_embroidery = $cat_config['embroidery_price'];
+		}
+	}
+
+	$data['logoEnabled'] = $logo_enabled;
+
+	if ( $logo_enabled ) {
 		$data['logoPositions']       = $logo_positions;
-		$data['logoPrintPrice']      = floatval( get_post_meta( $product->get_id(), '_wsg_logo_print_price', true ) );
-		$data['logoEmbroideryPrice'] = floatval( get_post_meta( $product->get_id(), '_wsg_logo_embroidery_price', true ) );
+		$data['logoPrintPrice']      = $logo_print;
+		$data['logoEmbroideryPrice'] = $logo_embroidery;
 		$data['logoUploadUrl']       = WC_AJAX::get_endpoint( 'wsg_upload_logo' );
 		$data['logoMaxSize']         = 5 * MB_IN_BYTES;
 		$data['logoAllowedTypes']    = 'image/jpeg,image/png,image/gif,image/webp';
