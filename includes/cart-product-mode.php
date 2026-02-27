@@ -102,7 +102,7 @@ function wsg_product_add_to_cart() {
 
 		$variation = wc_get_product( $variation_id );
 
-		if ( ! $variation ) {
+		if ( ! $variation || (int) $variation->get_parent_id() !== $product_id ) {
 			continue;
 		}
 

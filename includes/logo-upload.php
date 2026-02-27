@@ -90,11 +90,26 @@ function wsg_cleanup_orphan_logo_uploads() {
  * Validates file type and size, uploads via wp_handle_upload(),
  * creates a WP attachment, and returns the attachment data.
  *
+ * Guest uploads are rate-limited to prevent abuse (disk-fill vector).
+ *
  * @return void Sends JSON response.
  */
 function wsg_handle_logo_upload() {
 
 	check_ajax_referer( 'wsg_nonce', 'security' );
+
+	/* --- Rate-limit guest uploads --- */
+	if ( ! is_user_logged_in() ) {
+		$max_guest_uploads = (int) apply_filters( 'wsg_max_guest_logo_uploads', 3 );
+		$transient_key     = 'wsg_logo_uploads_' . md5( $_SERVER['REMOTE_ADDR'] ?? 'unknown' );
+		$upload_count      = (int) get_transient( $transient_key );
+
+		if ( $upload_count >= $max_guest_uploads ) {
+			wp_send_json_error( array( 'message' => __( 'Upload limit reached. Please try again later.', 'wsg' ) ) );
+		}
+
+		set_transient( $transient_key, $upload_count + 1, HOUR_IN_SECONDS );
+	}
 
 	if ( empty( $_FILES['logo_file'] ) ) {
 		wp_send_json_error( array( 'message' => __( 'No file uploaded.', 'wsg' ) ) );

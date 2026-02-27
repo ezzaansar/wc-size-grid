@@ -80,6 +80,38 @@ function wsg_bundle_add_to_cart_handler() {
 			continue;
 		}
 
+		// Validate variation belongs to this product.
+		$variation = wc_get_product( $variation_id );
+		if ( ! $variation || (int) $variation->get_parent_id() !== $product_id ) {
+			continue;
+		}
+
+		// Resolve labels server-side from the variation's attributes.
+		$color_label = '';
+		$color_hex   = '#cccccc';
+		$size_label  = '';
+
+		if ( $color_attr ) {
+			$color_slug = $variation->get_attribute( $color_attr );
+			if ( $color_slug ) {
+				$term = get_term_by( 'slug', $color_slug, $color_attr );
+				if ( $term ) {
+					$color_label = $term->name;
+					$color_hex   = wsg_get_color_hex( $term->name, $term->slug, $term->term_id );
+				} else {
+					$color_label = $color_slug;
+				}
+			}
+		}
+
+		if ( $size_attr ) {
+			$size_slug = $variation->get_attribute( $size_attr );
+			if ( $size_slug ) {
+				$term = get_term_by( 'slug', $size_slug, $size_attr );
+				$size_label = $term ? $term->name : $size_slug;
+			}
+		}
+
 		$variation_attributes = array();
 		if ( $color_attr && ! empty( $item['color_slug'] ) ) {
 			$variation_attributes[ 'attribute_' . sanitize_title( $color_attr ) ] = sanitize_text_field( $item['color_slug'] );
@@ -94,9 +126,9 @@ function wsg_bundle_add_to_cart_handler() {
 			'_wsg_bundle_price' => $bundle_price,
 			'_wsg_bundle_qty'   => $required_qty,
 			'_wsg_bundle_index' => $index,
-			'_wsg_color_label'  => sanitize_text_field( $item['color_label'] ?? '' ),
-			'_wsg_size_label'   => sanitize_text_field( $item['size_label'] ?? '' ),
-			'_wsg_color_hex'    => sanitize_hex_color( $item['color_hex'] ?? '' ) ?: '#cccccc',
+			'_wsg_color_label'  => $color_label,
+			'_wsg_size_label'   => $size_label,
+			'_wsg_color_hex'    => $color_hex,
 		);
 
 		$cart_item_data = wsg_add_logo_to_cart_item_data( $cart_item_data, $logo_data );
