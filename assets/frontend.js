@@ -408,7 +408,7 @@
 		'centre-chest':  { top: 42, left: 50 },
 		'left-sleeve':   { top: 40, left: 16 },
 		'right-sleeve':  { top: 40, left: 84 },
-		'back':          { top: 55, left: 50 },
+		'back':          { top: 65, left: 50 },
 		'front-pocket':  { top: 46, left: 36 },
 		'front-center':  { top: 42, left: 50 },
 		'front-centre':  { top: 42, left: 50 }
@@ -424,7 +424,7 @@
 
 		// Keyword-based inference.
 		if (key.indexOf('neck') !== -1 || key.indexOf('nape') !== -1) {
-			return { top: 18, left: 50 };
+			return { top: 12, left: 50 };
 		}
 		if (key.indexOf('breast') !== -1 || key.indexOf('chest') !== -1) {
 			if (key.indexOf('left') !== -1)  return { top: 42, left: 36 };
@@ -437,7 +437,7 @@
 			return { top: 40, left: 50 };
 		}
 		if (key.indexOf('back') !== -1) {
-			return { top: 55, left: 50 };
+			return { top: 65, left: 50 };
 		}
 		if (key.indexOf('pocket') !== -1) {
 			return { top: 46, left: 36 };
